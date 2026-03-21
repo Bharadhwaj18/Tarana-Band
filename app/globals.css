@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom fonts */
+@font-face {
+  font-family: 'Righteous';
+  src: url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+  font-weight: 400;
+}
+
+:root {
+  --primary: #000000;
+  --secondary: #FFFFFF;
+  --accent: #FF0000;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--secondary);
+  color: var(--primary);
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Utility classes */
+.container-custom {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.heading-display {
+  font-family: 'Righteous', sans-serif;
+  @apply text-6xl sm:text-7xl font-bold;
+}
+
+.heading-lg {
+  font-family: 'Righteous', sans-serif;
+  @apply text-4xl sm:text-5xl font-bold;
+}
+
+.heading-md {
+  font-family: 'Righteous', sans-serif;
+  @apply text-2xl sm:text-3xl font-bold;
+}
+
+.btn-primary {
+  @apply px-8 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors;
+}
+
+.btn-secondary {
+  @apply px-8 py-3 bg-white text-black font-semibold rounded-lg border-2 border-black hover:bg-gray-100 transition-colors;
+}
