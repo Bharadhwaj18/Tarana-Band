@@ -45,6 +45,7 @@ interface HomepageConfig {
     type: 'spotify' | 'youtube';
     embed_url: string;
     title: string;
+    description?: string;
   };
 }
 
@@ -113,6 +114,8 @@ export default function Home() {
     title: 'TARANA',
     subtitle: 'Experience the raw energy of live rock music',
     background_image: '',
+    background_video: '',
+    video_storage_path: '',
     cta_text: 'View Tours',
     cta_link: '/tours',
   };
@@ -247,31 +250,45 @@ export default function Home() {
       {/* Latest Music Embed Section */}
       {musicEmbed && musicEmbed.embed_url && (
         <section className="py-20 bg-gray-900">
-          <div className="container-custom max-w-4xl">
+          <div className="container-custom">
             <h2 className="text-5xl font-display font-bold text-center text-gold mb-12">
               {musicEmbed.title || 'Listen Now'}
             </h2>
-            <div className="rounded-2xl overflow-hidden shadow-2xl">
-              {musicEmbed.type === 'spotify' ? (
-                <iframe
-                  src={musicEmbed.embed_url}
-                  width="100%"
-                  height="380"
-                  frameBorder="0"
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  className="w-full"
-                ></iframe>
-              ) : (
-                <iframe
-                  width="100%"
-                  height="380"
-                  src={musicEmbed.embed_url}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full"
-                ></iframe>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              {/* Left: Music Embed */}
+              <div className="rounded-2xl overflow-hidden shadow-2xl">
+                {musicEmbed.type === 'spotify' ? (
+                  <iframe
+                    src={musicEmbed.embed_url}
+                    width="100%"
+                    height="380"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    className="w-full"
+                  ></iframe>
+                ) : (
+                  <iframe
+                    width="100%"
+                    height="380"
+                    src={musicEmbed.embed_url}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full"
+                  ></iframe>
+                )}
+              </div>
+
+              {/* Right: Description */}
+              {musicEmbed.description && (
+                <div className="text-white">
+                  <div className="prose prose-invert max-w-none">
+                    <p className="text-lg leading-relaxed text-gray-300 whitespace-pre-wrap">
+                      {musicEmbed.description}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </div>

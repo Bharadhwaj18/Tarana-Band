@@ -8,10 +8,19 @@ interface SocialLink {
   url: string;
 }
 
+interface NavigationConfig {
+  show_about?: boolean;
+  show_tours?: boolean;
+  show_merch?: boolean;
+  show_videos?: boolean;
+  show_contact?: boolean;
+}
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const [logoBlack, setLogoBlack] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [navConfig, setNavConfig] = useState<NavigationConfig>({});
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -37,6 +46,9 @@ export default function Footer() {
             }
             if (item.section_name === 'social') {
               setSocialLinks(item.content.social_links || []);
+            }
+            if (item.section_name === 'navigation') {
+              setNavConfig(item.content);
             }
           });
         }
@@ -69,26 +81,34 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-gray-400">
-              <li>
-                <a href="/about" className="hover:text-white transition">
-                  About Us
-                </a>
-              </li>
-              <li>
-                <a href="/tours" className="hover:text-white transition">
-                  Tours
-                </a>
-              </li>
-              <li>
-                <a href="/merch" className="hover:text-white transition">
-                  Merchandise
-                </a>
-              </li>
-              <li>
-                <a href="/videos" className="hover:text-white transition">
-                  Videos
-                </a>
-              </li>
+              {(navConfig.show_about !== false) && (
+                <li>
+                  <a href="/about" className="hover:text-white transition">
+                    About Us
+                  </a>
+                </li>
+              )}
+              {(navConfig.show_tours !== false) && (
+                <li>
+                  <a href="/tours" className="hover:text-white transition">
+                    Tours
+                  </a>
+                </li>
+              )}
+              {(navConfig.show_merch !== false) && (
+                <li>
+                  <a href="/merch" className="hover:text-white transition">
+                    Merchandise
+                  </a>
+                </li>
+              )}
+              {(navConfig.show_videos !== false) && (
+                <li>
+                  <a href="/videos" className="hover:text-white transition">
+                    Videos
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -96,11 +116,13 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4">Contact</h4>
             <ul className="space-y-2 text-gray-400">
-              <li>
-                <a href="/contact" className="hover:text-white transition">
-                  Contact Form
-                </a>
-              </li>
+              {(navConfig.show_contact !== false) && (
+                <li>
+                  <a href="/contact" className="hover:text-white transition">
+                    Contact Form
+                  </a>
+                </li>
+              )}
               <li>
                 <a href="mailto:info@tarana.band" className="hover:text-white transition">
                   Email

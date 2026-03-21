@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 interface ContactFormData {
   name: string;
   email: string;
+  phone?: string;
   message: string;
 }
 
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
           {
             name: body.name,
             email: body.email,
+            phone: body.phone || null,
             message: body.message,
             submitted_at: new Date().toISOString(),
           },
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
           <h2>New Contact Form Submission</h2>
           <p><strong>Name:</strong> ${body.name}</p>
           <p><strong>Email:</strong> ${body.email}</p>
+          ${body.phone ? `<p><strong>Phone:</strong> ${body.phone}</p>` : ''}
           <p><strong>Message:</strong></p>
           <p>${body.message.replace(/\n/g, '<br>')}</p>
         `,

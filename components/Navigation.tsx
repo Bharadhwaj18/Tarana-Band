@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface NavigationConfig {
   logo_black?: string;
@@ -20,6 +20,21 @@ interface NavigationProps {
 
 export default function Navigation({ isOverlay = false, config }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Detect scroll position to change header background
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Build nav items based on config
   const baseNavItems = [
@@ -39,7 +54,9 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
   });
 
   const containerClass = isOverlay
-    ? 'fixed top-0 left-0 right-0 z-30 bg-black/70 backdrop-blur-sm'
+    ? `fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
+        isScrolled ? 'bg-black/95 backdrop-blur-sm' : 'bg-transparent'
+      }`
     : 'bg-black text-white';
 
   return (
@@ -47,13 +64,36 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
       <div className="container-custom flex justify-between items-center py-4">
         {/* Logo or Brand */}
         <Link href="/" className="flex items-center gap-3">
-          {config?.logo_black && (
-            <img
-              src={config.logo_black}
-              alt="TARANA Logo"
-              className={`${isOverlay ? 'h-8' : 'h-10'} object-contain`}
-              title="TARANA"
-            />
+          {isOverlay && isScrolled ? (
+            // Show black logo when scrolled (dark background)
+            config?.logo_black && (
+              <img
+                src={config.logo_black}
+                alt="TARANA Logo"
+                className={`h-8 object-contain`}
+                title="TARANA"
+              />
+            )
+          ) : isOverlay && !isScrolled ? (
+            // Show white logo when at top (transparent background)
+            config?.logo_white && (
+              <img
+                src={config.logo_white}
+                alt="TARANA Logo"
+                className={`h-8 object-contain`}
+                title="TARANA"
+              />
+            )
+          ) : (
+            // For non-overlay navigation, use black logo
+            config?.logo_black && (
+              <img
+                src={config.logo_black}
+                alt="TARANA Logo"
+                className={`h-10 object-contain`}
+                title="TARANA"
+              />
+            )
           )}
           <span className={`font-bold heading-md ${isOverlay ? 'text-xl' : 'text-2xl'}`}>
             TARANA
@@ -100,7 +140,11 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className={`md:hidden ${isOverlay ? 'bg-black/90' : 'bg-gray-900'} p-4 space-y-4`}>
+        <div className={`md:hidden transition-all duration-300 ${
+          isOverlay
+            ? isScrolled ? 'bg-black/90' : 'bg-black/80'
+            : 'bg-gray-900'
+        } p-4 space-y-4`}>
           {navItems.map((item) => (
             <Link
               key={item.href}

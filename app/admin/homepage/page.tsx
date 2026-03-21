@@ -45,6 +45,7 @@ export default function AdminHomepagePage() {
   const [musicType, setMusicType] = useState<'spotify' | 'youtube'>('spotify');
   const [musicEmbedUrl, setMusicEmbedUrl] = useState('');
   const [musicTitle, setMusicTitle] = useState('Latest Music');
+  const [musicDescription, setMusicDescription] = useState('');
 
   // Featured Photos
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
@@ -110,6 +111,7 @@ export default function AdminHomepagePage() {
               setMusicType(content.type || 'spotify');
               setMusicEmbedUrl(content.embed_url || '');
               setMusicTitle(content.title || 'Latest Music');
+              setMusicDescription(content.description || '');
               break;
             case 'featured_photos':
               if (content.photos) {
@@ -304,6 +306,7 @@ export default function AdminHomepagePage() {
             type: musicType,
             embed_url: musicEmbedUrl,
             title: musicTitle,
+            description: musicDescription,
           },
         },
         {
@@ -523,14 +526,24 @@ export default function AdminHomepagePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-gray-300 mb-2">Embed URL</label>
-                <input
-                  type="text"
+                <label className="block text-gray-300 mb-2">Embed URL or Code</label>
+                <textarea
                   value={musicEmbedUrl}
-                  onChange={(e) => setMusicEmbedUrl(e.target.value)}
-                  placeholder="Paste Spotify/YouTube embed URL here"
-                  className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none"
+                  onChange={(e) => {
+                    const input = e.target.value;
+                    // Extract src from full iframe code if pasted
+                    const srcMatch = input.match(/src=["']([^"']+)["']/);
+                    if (srcMatch && srcMatch[1]) {
+                      setMusicEmbedUrl(srcMatch[1]);
+                    } else {
+                      setMusicEmbedUrl(input);
+                    }
+                  }}
+                  placeholder="Paste Spotify/YouTube embed URL or full embed code here"
+                  className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none resize-none"
+                  rows={3}
                 />
+                <p className="text-xs text-gray-500 mt-1">Tip: Paste the full embed code or just the URL - we'll extract it automatically</p>
               </div>
               <div>
                 <label className="block text-gray-300 mb-2">Section Title</label>
@@ -539,6 +552,16 @@ export default function AdminHomepagePage() {
                   value={musicTitle}
                   onChange={(e) => setMusicTitle(e.target.value)}
                   className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Description (Right Side Text)</label>
+                <textarea
+                  value={musicDescription}
+                  onChange={(e) => setMusicDescription(e.target.value)}
+                  placeholder="Tell your audience about this music embed. This will appear on the right side next to the embed."
+                  className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none resize-none"
+                  rows={4}
                 />
               </div>
             </div>

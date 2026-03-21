@@ -1,17 +1,73 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { createClient } from '@supabase/supabase-js';
+
+interface NavigationConfig {
+  logo_black?: string;
+  logo_white?: string;
+  show_about?: boolean;
+  show_tours?: boolean;
+  show_merch?: boolean;
+  show_videos?: boolean;
+  show_contact?: boolean;
+}
 
 export default function ContactPage() {
+  const [navConfig, setNavConfig] = useState<NavigationConfig>({});
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     message: '',
   });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        return;
+      }
+
+      try {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        );
+
+        const { data: generalData } = await supabase
+          .from('general_config')
+          .select('*')
+          .eq('is_active', true);
+
+        if (generalData) {
+          const generalConfig: any = {};
+          generalData.forEach((item: any) => {
+            generalConfig[item.section_name] = item.content;
+          });
+
+          const navigationConfig: NavigationConfig = {
+            logo_black: generalConfig.branding?.logo_black,
+            logo_white: generalConfig.branding?.logo_white,
+            show_about: generalConfig.navigation?.show_about !== false,
+            show_tours: generalConfig.navigation?.show_tours !== false,
+            show_merch: generalConfig.navigation?.show_merch !== false,
+            show_videos: generalConfig.navigation?.show_videos !== false,
+            show_contact: generalConfig.navigation?.show_contact !== false,
+          };
+
+          setNavConfig(navigationConfig);
+        }
+      } catch (error) {
+        console.error('Error fetching config:', error);
+      }
+    };
+
+    fetchConfig();
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -41,7 +97,7 @@ export default function ContactPage() {
 
       if (response.ok) {
         setStatus('success');
-        setFormData({ name: '', email: '', message: '' });
+        setFormData({ name: '', email: '', phone: '', message: '' });
         // Reset success message after 5 seconds
         setTimeout(() => setStatus('idle'), 5000);
       } else {
@@ -57,7 +113,7 @@ export default function ContactPage() {
 
   return (
     <main>
-      <Navigation />
+      <Navigation config={navConfig} />
 
       {/* Hero Section */}
       <section className="bg-black text-white py-16 sm:py-24">
@@ -104,6 +160,22 @@ export default function ContactPage() {
                 required
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
                 placeholder="your@email.com"
+              />
+            </div>
+
+            {/* Phone Field */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 mb-2">
+                Phone Number <span className="text-gray-500">(Optional)</span>
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+                placeholder="+1 (555) 123-4567"
               />
             </div>
 
