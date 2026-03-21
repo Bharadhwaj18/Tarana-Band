@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface NavigationConfig {
   logo_black?: string;
@@ -21,6 +22,7 @@ interface NavigationProps {
 export default function Navigation({ isOverlay = false, config }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
 
   // Detect scroll position to change header background
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
 
   // Build nav items based on config
   const baseNavItems = [
+    { href: '/', label: 'Home', configKey: null as const },
     { href: '/about', label: 'About Us', configKey: 'show_about' as const },
     { href: '/tours', label: 'Tours', configKey: 'show_tours' as const },
     { href: '/merch', label: 'Merch', configKey: 'show_merch' as const },
@@ -47,6 +50,14 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
 
   // Filter nav items based on config (default to true if config not provided)
   const navItems = baseNavItems.filter(item => {
+    // Hide Home link when on home page
+    if (item.href === '/' && pathname === '/') {
+      return false;
+    }
+    // Always show Home when not on home page
+    if (item.configKey === null) {
+      return true;
+    }
     if (!config || config[item.configKey] === undefined) {
       return true; // Show by default
     }
