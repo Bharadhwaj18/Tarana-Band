@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
+import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils';
 
 interface Product {
   id: string;
   name: string;
   description: string;
   image_url: string | null;
+  storage_path?: string | null;
   price: number;
   external_link: string;
   is_active: boolean;
@@ -19,6 +21,7 @@ interface Product {
 export default function AdminMerchPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -27,6 +30,8 @@ export default function AdminMerchPage() {
     external_link: '',
     is_active: true,
     order_position: 0,
+    image_url: '',
+    storage_path: '',
   });
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
@@ -64,6 +69,34 @@ export default function AdminMerchPage() {
     }));
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const uploadResult = await uploadImageToSupabase(supabase, file, 'merchandise');
+
+      if (uploadResult) {
+        setFormData((prev) => ({
+          ...prev,
+          image_url: uploadResult.url,
+          storage_path: uploadResult.path,
+        }));
+        alert('Photo uploaded successfully!');
+      } else {
+        alert('Error uploading photo');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Error uploading photo');
+    }
+
+    setUploading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     if (!supabase) return;
     e.preventDefault();
@@ -78,7 +111,7 @@ export default function AdminMerchPage() {
       } else {
         await supabase.from('merchandise').insert([formData]);
       }
-      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0 });
+      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', storage_path: '' });
       setEditingId(null);
       fetchProducts();
     } catch (error) {
@@ -95,6 +128,14 @@ export default function AdminMerchPage() {
     if (!supabase) return;
     if (!confirm('Delete this product?')) return;
     try {
+      // First, find the product to get its photo storage path
+      const productToDelete = products.find(p => p.id === id);
+
+      // Delete photo from storage if it exists
+      if (productToDelete?.storage_path) {
+        await deleteImageFromSupabase(supabase, productToDelete.storage_path);
+      }
+
       await supabase.from('merchandise').delete().eq('id', id);
       fetchProducts();
     } catch (error) {
@@ -113,14 +154,70 @@ export default function AdminMerchPage() {
           <h2 className="text-xl font-semibold text-gold mb-4">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="name" placeholder="Product Name" value={formData.name || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              <input type="number" name="price" placeholder="Price" step="0.01" value={formData.price || 0} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Product Name</label>
+                <input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Price ($)</label>
+                <input type="number" name="price" step="0.01" value={formData.price || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
             </div>
-            <textarea name="description" placeholder="Description" value={formData.description || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" rows={4} />
-            <input type="url" name="external_link" placeholder="Shop Link (https://...)" value={formData.external_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Description</label>
+              <textarea name="description" value={formData.description || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" rows={4} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Shop Link</label>
+              <input type="url" name="external_link" value={formData.external_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="image_url" placeholder="Image URL" value={formData.image_url || ''} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              <input type="number" name="order_position" placeholder="Order" value={formData.order_position || 0} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              {/* Photo Upload Section */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Product Image
+                </label>
+                {formData.image_url ? (
+                  <div className="space-y-2">
+                    <img
+                      src={formData.image_url}
+                      alt="Product preview"
+                      className="w-full h-40 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, image_url: '', storage_path: '' })}
+                      className="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      Remove Photo
+                    </button>
+                  </div>
+                ) : (
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      disabled={uploading}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-gold file:text-black
+                        hover:file:bg-gold-light
+                        file:cursor-pointer
+                        disabled:opacity-50"
+                    />
+                    {uploading && (
+                      <p className="text-sm text-gold mt-2">Uploading...</p>
+                    )}
+                  </label>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
+                <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
             </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="is_active" checked={formData.is_active || false} onChange={handleInputChange} className="w-4 h-4" />
@@ -131,7 +228,7 @@ export default function AdminMerchPage() {
                 {editingId ? 'Update' : 'Add'} Product
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0 }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', storage_path: '' }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
               )}

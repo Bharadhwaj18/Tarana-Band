@@ -1,6 +1,8 @@
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
+export const revalidate = 60; // Revalidate every 60 seconds (ISR)
+
 interface Product {
   id: string;
   name: string;

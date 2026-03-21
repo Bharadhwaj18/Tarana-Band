@@ -60,7 +60,40 @@ export default function AdminToursPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let updatedData = { ...formData, [name]: value };
+
+    // Auto-adjust status based on date if needed
+    if (name === 'date') {
+      const tourDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // If setting date to past, auto-set status to "past"
+      if (tourDate < today && formData.status === 'upcoming') {
+        updatedData.status = 'past';
+      }
+      // If setting date to future, auto-set status to "upcoming" (unless it's already set)
+      else if (tourDate >= today && !formData.status) {
+        updatedData.status = 'upcoming';
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, ...updatedData }));
+  };
+
+  const getValidStatusOptions = () => {
+    if (!formData.date) return ['upcoming', 'past', 'cancelled'];
+
+    const tourDate = new Date(formData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // If date is in the past, only allow "past" or "cancelled"
+    if (tourDate < today) {
+      return ['past', 'cancelled'];
+    }
+    // If date is in the future, only allow "upcoming"
+    return ['upcoming'];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +101,16 @@ export default function AdminToursPage() {
     e.preventDefault();
     if (!formData.date || !formData.venue_name || !formData.city || !formData.ticket_link) {
       alert('Please fill in all required fields');
+      return;
+    }
+
+    // Validate that past dates cannot have "upcoming" status
+    const tourDate = new Date(formData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (tourDate < today && formData.status === 'upcoming') {
+      alert('Tour date is in the past. Please set status to "Past" or "Cancelled".');
       return;
     }
 
@@ -121,18 +164,43 @@ export default function AdminToursPage() {
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="date" name="date" value={formData.date || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              <input type="text" name="venue_name" placeholder="Venue Name" value={formData.venue_name || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              <input type="text" name="city" placeholder="City" value={formData.city || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              <input type="url" name="ticket_link" placeholder="Ticket Link" value={formData.ticket_link || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Tour Date</label>
+                <input type="date" name="date" value={formData.date || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+                {formData.date && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(formData.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                      ? '⚠️ Past date - Status must be "Past" or "Cancelled"'
+                      : '✓ Future date - Status should be "Upcoming"'}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Venue Name</label>
+                <input type="text" name="venue_name" value={formData.venue_name || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">City</label>
+                <input type="text" name="city" value={formData.city || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Ticket Link</label>
+                <input type="url" name="ticket_link" value={formData.ticket_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <select name="status" value={formData.status || 'upcoming'} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none">
-                <option value="upcoming">Upcoming</option>
-                <option value="past">Past</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-              <textarea name="description" placeholder="Description (optional)" value={formData.description || ''} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Status</label>
+                <select name="status" value={formData.status || 'upcoming'} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none">
+                  {getValidStatusOptions().includes('upcoming') && <option value="upcoming">Upcoming</option>}
+                  {getValidStatusOptions().includes('past') && <option value="past">Past</option>}
+                  {getValidStatusOptions().includes('cancelled') && <option value="cancelled">Cancelled</option>}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Description (optional)</label>
+                <textarea name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
             </div>
             <div className="flex gap-2">
               <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">

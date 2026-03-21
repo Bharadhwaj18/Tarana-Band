@@ -184,35 +184,41 @@ export default function AdminMembersPage() {
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Name"
-                value={formData.name || ''}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
-              />
-              <input
-                type="text"
-                name="role"
-                placeholder="Role (e.g., Lead Vocals)"
-                value={formData.role || ''}
-                onChange={handleInputChange}
-                required
-                className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Member Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name || ''}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Role</label>
+                <input
+                  type="text"
+                  name="role"
+                  value={formData.role || ''}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
+                />
+              </div>
             </div>
 
-            <textarea
-              name="bio"
-              placeholder="Biography"
-              value={formData.bio || ''}
-              onChange={handleInputChange}
-              required
-              rows={4}
-              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
-            />
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Biography</label>
+              <textarea
+                name="bio"
+                value={formData.bio || ''}
+                onChange={handleInputChange}
+                required
+                rows={4}
+                className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
+              />
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Photo Upload Section */}
@@ -258,14 +264,16 @@ export default function AdminMembersPage() {
                 )}
               </div>
 
-              <input
-                type="number"
-                name="order_position"
-                placeholder="Order"
-                value={formData.order_position || 0}
-                onChange={handleInputChange}
-                className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
+                <input
+                  type="number"
+                  name="order_position"
+                  value={formData.order_position || 0}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
+                />
+              </div>
             </div>
 
             <div className="flex gap-2">

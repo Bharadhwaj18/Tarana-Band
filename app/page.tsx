@@ -54,6 +54,9 @@ export default function Home() {
   const [navConfig, setNavConfig] = useState<NavigationConfig>({});
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [upcomingToursSoon, setUpcomingToursSoon] = useState<any>(null);
+  const [showNotification, setShowNotification] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -104,6 +107,25 @@ export default function Home() {
         setNavConfig(navigationConfig);
       }
 
+      // Fetch upcoming tours to check if any are within 3 months
+      const { data: toursData } = await supabase
+        .from('tours')
+        .select('*')
+        .eq('status', 'upcoming')
+        .order('date', { ascending: true });
+
+      if (toursData && toursData.length > 0) {
+        const now = new Date();
+        const threeMonthsFromNow = new Date(now.getTime() + 3 * 30 * 24 * 60 * 60 * 1000);
+        const upcomingTour = toursData.find((tour: any) => {
+          const tourDate = new Date(tour.date);
+          return tourDate >= now && tourDate <= threeMonthsFromNow;
+        });
+        if (upcomingTour) {
+          setUpcomingToursSoon(upcomingTour);
+        }
+      }
+
       setLoading(false);
     };
 
@@ -142,6 +164,22 @@ export default function Home() {
       return () => clearInterval(timer);
     }
   }, [featuredPhotos.length]);
+
+  // Hide notification after 10 seconds with slide-out animation
+  useEffect(() => {
+    if (upcomingToursSoon && showNotification && !isClosing) {
+      const hideTimer = setTimeout(() => {
+        setIsClosing(true);
+        // After animation completes (0.5s), hide the notification
+        const removeTimer = setTimeout(() => {
+          setShowNotification(false);
+        }, 500);
+        return () => clearTimeout(removeTimer);
+      }, 10000); // 10 seconds
+
+      return () => clearTimeout(hideTimer);
+    }
+  }, [upcomingToursSoon, showNotification, isClosing]);
 
   // Carousel navigation functions
   const nextSlide = () => {
@@ -214,6 +252,38 @@ export default function Home() {
           </svg>
         </div>
       </section>
+
+      {/* Upcoming Tours Banner - Floating Notification */}
+      {upcomingToursSoon && showNotification && (
+        <div className={`fixed top-24 right-8 z-50 ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
+          <div className="bg-white rounded-lg shadow-2xl overflow-hidden w-full max-w-2xl hover:shadow-3xl transition-shadow border-l-4 border-red-600">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-start gap-3 flex-1">
+                <span className="inline-block w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse mt-1.5 flex-shrink-0"></span>
+                <div>
+                  <h3 className="text-black font-bold text-lg">
+                    {upcomingToursSoon.venue_name}
+                  </h3>
+                  <p className="text-gray-500 text-sm mt-0.5">
+                    {new Date(upcomingToursSoon.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    })} • {upcomingToursSoon.city}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={upcomingToursSoon.ticket_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition-all flex-shrink-0 ml-4"
+              >
+                Get Tickets
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Section - Making Band Look HUGE */}
       {(stats.shows_played > 0 || stats.fans > 0 || stats.years_active > 0 || stats.albums > 0) && (

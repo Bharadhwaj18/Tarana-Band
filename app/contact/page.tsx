@@ -224,7 +224,7 @@ export default function ContactPage() {
       </section>
 
       {/* Info Section */}
-      <section className="py-10 sm:py-12 bg-gray-50">
+      {/* <section className="py-10 sm:py-12 bg-gray-50">
         <div className="container-custom">
           <h2 className="heading-lg text-center mb-12">Other Ways To Connect</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -255,7 +255,7 @@ export default function ContactPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       <Footer />
     </main>

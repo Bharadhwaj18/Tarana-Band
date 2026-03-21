@@ -1,6 +1,8 @@
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
+export const revalidate = 60; // Revalidate every 60 seconds (ISR)
+
 interface Tour {
   id: string;
   date: string;
@@ -77,16 +79,16 @@ export default async function ToursPage() {
       </section>
 
       {/* Upcoming Tours */}
-      <section className="py-10 sm:py-12 bg-white">
+      <section className="py-10 sm:py-12 bg-black">
         <div className="container-custom">
-          <h2 className="heading-lg mb-12">Upcoming Shows</h2>
+          <h2 className="heading-lg mb-12 text-white">Upcoming Shows</h2>
 
           {upcoming.length > 0 ? (
             <div className="space-y-4">
               {upcoming.map((tour) => (
                 <div
                   key={tour.id}
-                  className="border-l-4 border-red-600 bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow"
+                  className="border-l-4 border-red-600 bg-white p-6 rounded-lg hover:shadow-lg transition-shadow"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -113,7 +115,7 @@ export default async function ToursPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-300 text-lg">
                 No upcoming shows scheduled. Follow us for announcements!
               </p>
             </div>
@@ -123,9 +125,9 @@ export default async function ToursPage() {
 
       {/* Past Tours */}
       {past.length > 0 && (
-        <section className="py-10 sm:py-12 bg-gray-50">
+        <section className="py-10 sm:py-12 bg-black">
           <div className="container-custom">
-            <h2 className="heading-lg mb-12">Past Shows</h2>
+            <h2 className="heading-lg mb-12 text-white">Past Shows</h2>
 
             <div className="space-y-4">
               {past.map((tour) => (

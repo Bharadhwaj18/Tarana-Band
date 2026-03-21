@@ -115,23 +115,41 @@ export default function AdminVideosPage() {
         <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
           <h2 className="text-xl font-semibold text-gold mb-4">{editingId ? 'Edit Video' : 'Add New Video'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input type="text" name="title" placeholder="Video Title" value={formData.title || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-            <textarea name="description" placeholder="Description" value={formData.description || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" rows={3} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <select name="video_type" value={formData.video_type || 'youtube'} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none">
-                <option value="youtube">YouTube</option>
-                <option value="vimeo">Vimeo</option>
-                <option value="self_hosted">Self-Hosted</option>
-              </select>
-              <input type="text" name="video_file_url" placeholder="Video URL or ID" value={formData.video_file_url || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Video Title</label>
+              <input type="text" name="title" value={formData.title || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
-            <input type="text" name="thumbnail_url" placeholder="Thumbnail URL (optional)" value={formData.thumbnail_url || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Description</label>
+              <textarea name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" rows={3} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Video Type</label>
+                <select name="video_type" value={formData.video_type || 'youtube'} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none">
+                  <option value="youtube">YouTube</option>
+                  <option value="vimeo">Vimeo</option>
+                  <option value="self_hosted">Self-Hosted</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Video URL or ID</label>
+                <input type="text" name="video_file_url" value={formData.video_file_url || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Thumbnail URL (optional)</label>
+              <input type="text" name="thumbnail_url" value={formData.thumbnail_url || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="is_featured" checked={formData.is_featured || false} onChange={handleInputChange} className="w-4 h-4" />
                 <span className="text-sm text-gray-300">Featured</span>
               </label>
-              <input type="number" name="order_position" placeholder="Order" value={formData.order_position || 0} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
+                <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
             </div>
             <div className="flex gap-2">
               <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
