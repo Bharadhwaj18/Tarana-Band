@@ -30,8 +30,8 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
       </div>
     );
   }
@@ -53,9 +53,9 @@ export default function AdminDashboard() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Welcome back! Logged in as {user.email}
+          <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+          <p className="text-gray-400 mt-2">
+            Welcome back! Logged in as <span className="text-gold">{user.email}</span>
           </p>
         </div>
 
@@ -65,32 +65,32 @@ export default function AdminDashboard() {
             <Link
               key={item.href}
               href={item.href}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 block"
+              className="bg-gray-800 rounded-lg shadow hover:shadow-xl hover:shadow-gold/20 transition-all p-6 block border border-gray-700 hover:border-gold"
             >
               <div className="text-4xl mb-4">{item.icon}</div>
-              <h3 className="text-xl font-semibold text-gray-900 hover:text-red-600 transition-colors">
+              <h3 className="text-xl font-semibold text-white hover:text-gold transition-colors">
                 {item.label}
               </h3>
-              <p className="text-gray-600 text-sm mt-2">Manage {item.label.toLowerCase()}</p>
+              <p className="text-gray-400 text-sm mt-2">Manage {item.label.toLowerCase()}</p>
             </Link>
           ))}
         </div>
 
         {/* Quick Stats */}
-        <div className="mt-12 bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Info</h3>
+        <div className="mt-12 bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4">Quick Info</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="text-center">
-              <p className="text-gray-600 text-sm">Band Members</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">7</p>
+              <p className="text-gray-400 text-sm">Band Members</p>
+              <p className="text-3xl font-bold text-gold mt-2">7</p>
             </div>
             <div className="text-center">
-              <p className="text-gray-600 text-sm">Manage Content</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">📱</p>
+              <p className="text-gray-400 text-sm">Manage Content</p>
+              <p className="text-3xl font-bold text-gold mt-2">📱</p>
             </div>
             <div className="text-center">
-              <p className="text-gray-600 text-sm">Support</p>
-              <p className="text-lg text-red-600 mt-2">
+              <p className="text-gray-400 text-sm">Support</p>
+              <p className="text-lg text-gold mt-2">
                 <a href="/" className="hover:underline">Back to Site</a>
               </p>
             </div>

@@ -43,20 +43,20 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-center mb-2 text-black">TARANA</h1>
-        <h2 className="text-xl font-semibold text-center mb-8 text-gray-700">Admin Login</h2>
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-2xl p-8 border border-gray-700">
+        <h1 className="text-4xl font-bold text-center mb-2 text-gold">TARANA</h1>
+        <h2 className="text-xl font-semibold text-center mb-8 text-gray-300">Admin Login</h2>
 
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded mb-6">
-            <p className="text-red-800 font-semibold">{error}</p>
+          <div className="bg-red-900/30 border-l-4 border-red-600 p-4 rounded mb-6">
+            <p className="text-red-300 font-semibold">{error}</p>
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-300 mb-2">
               Email
             </label>
             <input
@@ -65,13 +65,13 @@ export default function AdminLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-gold text-white placeholder-gray-500"
               placeholder="admin@tarana.band"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-300 mb-2">
               Password
             </label>
             <input
@@ -80,7 +80,7 @@ export default function AdminLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-gold text-white placeholder-gray-500"
               placeholder="••••••••"
             />
           </div>
@@ -88,14 +88,14 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white font-semibold py-2 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+            className="w-full bg-gold hover:bg-gold-light text-black font-semibold py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 mt-6 text-sm">
-          Back to <a href="/" className="text-red-600 hover:text-red-700">website</a>
+        <p className="text-center text-gray-400 mt-6 text-sm">
+          Back to <a href="/" className="text-gold hover:text-gold-light transition-colors">website</a>
         </p>
       </div>
     </div>

@@ -413,80 +413,91 @@ export default function Home() {
       <section className="py-20 bg-gradient-to-b from-gray-900 to-black">
         <div className="container-custom">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <a
-              href="/tours"
-              className="group relative bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
-            >
-              <div className="absolute top-0 right-0 text-9xl opacity-5 group-hover:opacity-10 transition-opacity">
-                🎤
-              </div>
-              <div className="relative z-10">
-                <h3 className="text-3xl font-display font-bold text-gold mb-4">Upcoming Tours</h3>
-                <p className="text-gray-300 mb-6">
-                  Catch us live on stage. Energy, passion, unforgettable nights.
-                </p>
-                <span className="text-gold font-semibold group-hover:translate-x-2 inline-block transition-transform">
-                  View Dates →
-                </span>
-              </div>
-            </a>
+            {/* Upcoming Tours - Only show if enabled */}
+            {navConfig.show_tours !== false && (
+              <a
+                href="/tours"
+                className="group relative bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
+              >
+                <div className="absolute top-0 right-0 text-9xl opacity-5 group-hover:opacity-10 transition-opacity">
+                  🎤
+                </div>
+                <div className="relative z-10">
+                  <h3 className="text-3xl font-display font-bold text-gold mb-4">Upcoming Tours</h3>
+                  <p className="text-gray-300 mb-6">
+                    Catch us live on stage. Energy, passion, unforgettable nights.
+                  </p>
+                  <span className="text-gold font-semibold group-hover:translate-x-2 inline-block transition-transform">
+                    View Dates →
+                  </span>
+                </div>
+              </a>
+            )}
 
-            <a
-              href="/merch"
-              className="group relative bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
-            >
-              <div className="absolute top-0 right-0 text-9xl opacity-5 group-hover:opacity-10 transition-opacity">
-                🎸
-              </div>
-              <div className="relative z-10">
-                <h3 className="text-3xl font-display font-bold text-gold mb-4">Exclusive Merch</h3>
-                <p className="text-gray-300 mb-6">
-                  Limited edition gear. Support the band, look amazing.
-                </p>
-                <span className="text-gold font-semibold group-hover:translate-x-2 inline-block transition-transform">
-                  Shop Now →
-                </span>
-              </div>
-            </a>
+            {/* Exclusive Merch - Only show if enabled */}
+            {navConfig.show_merch !== false && (
+              <a
+                href="/merch"
+                className="group relative bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
+              >
+                <div className="absolute top-0 right-0 text-9xl opacity-5 group-hover:opacity-10 transition-opacity">
+                  🎸
+                </div>
+                <div className="relative z-10">
+                  <h3 className="text-3xl font-display font-bold text-gold mb-4">Exclusive Merch</h3>
+                  <p className="text-gray-300 mb-6">
+                    Limited edition gear. Support the band, look amazing.
+                  </p>
+                  <span className="text-gold font-semibold group-hover:translate-x-2 inline-block transition-transform">
+                    Shop Now →
+                  </span>
+                </div>
+              </a>
+            )}
 
-            <a
-              href="/videos"
-              className="group relative bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
-            >
-              <div className="absolute top-0 right-0 text-9xl opacity-5 group-hover:opacity-10 transition-opacity">
-                🎥
-              </div>
-              <div className="relative z-10">
-                <h3 className="text-3xl font-display font-bold text-gold mb-4">Latest Videos</h3>
-                <p className="text-gray-300 mb-6">
-                  Behind the scenes, live performances, music videos.
-                </p>
-                <span className="text-gold font-semibold group-hover:translate-x-2 inline-block transition-transform">
-                  Watch Now →
-                </span>
-              </div>
-            </a>
+            {/* Latest Videos - Only show if enabled */}
+            {navConfig.show_videos !== false && (
+              <a
+                href="/videos"
+                className="group relative bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
+              >
+                <div className="absolute top-0 right-0 text-9xl opacity-5 group-hover:opacity-10 transition-opacity">
+                  🎥
+                </div>
+                <div className="relative z-10">
+                  <h3 className="text-3xl font-display font-bold text-gold mb-4">Latest Videos</h3>
+                  <p className="text-gray-300 mb-6">
+                    Behind the scenes, live performances, music videos.
+                  </p>
+                  <span className="text-gold font-semibold group-hover:translate-x-2 inline-block transition-transform">
+                    Watch Now →
+                  </span>
+                </div>
+              </a>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-24 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
-        <div className="container-custom text-center">
-          <h2 className="text-5xl md:text-6xl font-display font-bold text-black mb-6">
-            Stay Connected
-          </h2>
-          <p className="text-xl text-black/80 mb-10 max-w-2xl mx-auto">
-            Get exclusive updates, early ticket access, and behind-the-scenes content
-          </p>
-          <a
-            href="/contact"
-            className="inline-block px-12 py-4 bg-black hover:bg-gray-900 text-gold font-bold text-xl rounded-full transform hover:scale-105 transition-all shadow-2xl"
-          >
-            Get In Touch
-          </a>
-        </div>
-      </section>
+      {/* Call to Action - Only show if contact is enabled */}
+      {navConfig.show_contact !== false && (
+        <section className="py-24 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
+          <div className="container-custom text-center">
+            <h2 className="text-5xl md:text-6xl font-display font-bold text-black mb-6">
+              Stay Connected
+            </h2>
+            <p className="text-xl text-black/80 mb-10 max-w-2xl mx-auto">
+              Get exclusive updates, early ticket access, and behind-the-scenes content
+            </p>
+            <a
+              href="/contact"
+              className="inline-block px-12 py-4 bg-black hover:bg-gray-900 text-gold font-bold text-xl rounded-full transform hover:scale-105 transition-all shadow-2xl"
+            >
+              Get In Touch
+            </a>
+          </div>
+        </section>
+      )}
 
       <Footer />
     </main>
