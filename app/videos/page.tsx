@@ -83,9 +83,9 @@ export default function VideosPage() {
 
       {/* Videos Section */}
       {loading ? (
-        <section className="py-10 sm:py-12 bg-white">
+        <section className="py-10 sm:py-12 bg-black">
           <div className="container-custom text-center">
-            <p className="text-gray-600">Loading videos...</p>
+            <p className="text-gray-300">Loading videos...</p>
           </div>
         </section>
       ) : videos.length > 0 ? (
@@ -118,15 +118,15 @@ export default function VideosPage() {
           )}
 
           {/* Video Grid */}
-          <section className="py-10 sm:py-12 bg-white">
+          <section className="py-10 sm:py-12 bg-black">
             <div className="container-custom">
-              <h3 className="heading-md mb-12">All Videos</h3>
+              <h3 className="heading-md mb-12 text-white">All Videos</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {videos.map((video) => (
                   <button
                     key={video.id}
                     onClick={() => setSelectedVideo(video)}
-                    className={`group rounded-lg overflow-hidden text-left transition-all ${
+                    className={`group rounded-lg overflow-hidden text-left transition-all bg-white ${
                       selectedVideo?.id === video.id
                         ? 'ring-2 ring-red-600'
                         : 'hover:shadow-lg'
@@ -160,7 +160,7 @@ export default function VideosPage() {
                         </svg>
                       </div>
                     </div>
-                    <div className="p-4 bg-gray-50">
+                    <div className="p-4 bg-white">
                       <h4 className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
                         {video.title}
                       </h4>
@@ -172,9 +172,9 @@ export default function VideosPage() {
           </section>
         </>
       ) : (
-        <section className="py-10 sm:py-12 bg-white">
+        <section className="py-10 sm:py-12 bg-black">
           <div className="container-custom text-center">
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-300 text-lg">
               Videos coming soon. Check back later!
             </p>
           </div>

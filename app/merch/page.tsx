@@ -62,14 +62,15 @@ export default async function MerchPage() {
       </section>
 
       {/* Products Section */}
-      <section className="py-10 sm:py-12 bg-white">
+      <section className="py-10 sm:py-12 bg-black">
         <div className="container-custom">
+          <h2 className="heading-lg mb-12 text-white">Featured Products</h2>
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
                 <div
                   key={product.id}
-                  className="bg-gray-50 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {product.image_url && (
                     <div className="w-full h-64 bg-gray-200 overflow-hidden">
@@ -83,7 +84,7 @@ export default async function MerchPage() {
                   <div className="p-6">
                     <h3 className="heading-md mb-2">{product.name}</h3>
                     <p className="text-red-600 font-bold text-lg mb-3">
-                      ${product.price.toFixed(2)}
+                      ₹{product.price.toFixed(2)}
                     </p>
                     <p className="text-gray-600 mb-6">{product.description}</p>
                     <a
@@ -100,7 +101,7 @@ export default async function MerchPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-300 text-lg">
                 Merchandise coming soon. Check back later!
               </p>
             </div>
@@ -109,7 +110,7 @@ export default async function MerchPage() {
       </section>
 
       {/* Info Section */}
-      <section className="py-10 sm:py-12 bg-gray-900 text-white">
+      <section className="py-10 sm:py-12 bg-black text-white border-t border-gray-700">
         <div className="container-custom max-w-2xl">
           <h2 className="heading-lg text-center mb-8">Support The Band</h2>
           <p className="text-gray-300 text-center mb-6">

@@ -118,7 +118,7 @@ export default function ContactPage() {
       {/* Hero Section */}
       <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
-          <h1 className="heading-display mb-4 text-red-600">GET IN TOUCH</h1>
+          <h1 className="heading-display mb-4 text-yellow-400">GET IN TOUCH</h1>
           <p className="text-lg sm:text-xl text-gray-300">
             Have a question or want to collaborate? We'd love to hear from you.
           </p>
@@ -126,12 +126,13 @@ export default function ContactPage() {
       </section>
 
       {/* Contact Form Section */}
-      <section className="py-10 sm:py-12 bg-white">
+      <section className="py-10 sm:py-12 bg-black">
         <div className="container-custom max-w-2xl">
+          <h2 className="heading-lg mb-8 text-white text-center">Send us a message</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-300 mb-2">
                 Name
               </label>
               <input
@@ -141,14 +142,14 @@ export default function ContactPage() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
                 placeholder="Your name"
               />
             </div>
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-300 mb-2">
                 Email
               </label>
               <input
@@ -158,14 +159,14 @@ export default function ContactPage() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
                 placeholder="your@email.com"
               />
             </div>
 
             {/* Phone Field */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="phone" className="block text-sm font-semibold text-gray-300 mb-2">
                 Phone Number <span className="text-gray-500">(Optional)</span>
               </label>
               <input
@@ -174,14 +175,14 @@ export default function ContactPage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
-                placeholder="+1 (555) 123-4567"
+                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
+                placeholder="+91 ("
               />
             </div>
 
             {/* Message Field */}
             <div>
-              <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="message" className="block text-sm font-semibold text-gray-300 mb-2">
                 Message
               </label>
               <textarea
@@ -191,23 +192,23 @@ export default function ContactPage() {
                 onChange={handleChange}
                 required
                 rows={6}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600 transition-colors resize-none"
+                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors resize-none"
                 placeholder="Your message..."
               />
             </div>
 
             {/* Status Messages */}
             {status === 'success' && (
-              <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded">
-                <p className="text-green-800 font-semibold">
+              <div className="bg-green-900 border-l-4 border-green-500 p-4 rounded">
+                <p className="text-green-300 font-semibold">
                   ✓ Thank you! Your message has been sent. We'll get back to you soon.
                 </p>
               </div>
             )}
 
             {status === 'error' && (
-              <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded">
-                <p className="text-red-800 font-semibold">✗ {errorMessage}</p>
+              <div className="bg-red-900 border-l-4 border-red-500 p-4 rounded">
+                <p className="text-red-300 font-semibold">✗ {errorMessage}</p>
               </div>
             )}
 
@@ -215,7 +216,7 @@ export default function ContactPage() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {status === 'loading' ? 'Sending...' : 'Send Message'}
             </button>
@@ -224,31 +225,31 @@ export default function ContactPage() {
       </section>
 
       {/* Info Section */}
-      {/* <section className="py-10 sm:py-12 bg-gray-50">
+      {/* <section className="py-10 sm:py-12 bg-black border-t border-gray-700">
         <div className="container-custom">
-          <h2 className="heading-lg text-center mb-12">Other Ways To Connect</h2>
+          <h2 className="heading-lg text-center mb-12 text-white">Other Ways To Connect</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="text-4xl mb-4">📧</div>
-              <h3 className="heading-md mb-2">Email</h3>
-              <p className="text-gray-600">
-                <a href="mailto:info@tarana.band" className="text-red-600 hover:text-red-700">
+              <h3 className="heading-md mb-2 text-white">Email</h3>
+              <p className="text-gray-300">
+                <a href="mailto:info@tarana.band" className="text-red-400 hover:text-red-300">
                   info@tarana.band
                 </a>
               </p>
             </div>
             <div className="text-center">
               <div className="text-4xl mb-4">🎵</div>
-              <h3 className="heading-md mb-2">Social Media</h3>
-              <p className="text-gray-600">
+              <h3 className="heading-md mb-2 text-white">Social Media</h3>
+              <p className="text-gray-300">
                 Follow us on Instagram, YouTube, and other platforms
               </p>
             </div>
             <div className="text-center">
               <div className="text-4xl mb-4">🎤</div>
-              <h3 className="heading-md mb-2">Events</h3>
-              <p className="text-gray-600">
-                <a href="/tours" className="text-red-600 hover:text-red-700">
+              <h3 className="heading-md mb-2 text-white">Events</h3>
+              <p className="text-gray-300">
+                <a href="/tours" className="text-red-400 hover:text-red-300">
                   Check out our tour dates
                 </a>
               </p>

@@ -159,7 +159,7 @@ export default function AdminMerchPage() {
                 <input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Price ($)</label>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Price (₹)</label>
                 <input type="number" name="price" step="0.01" value={formData.price || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
               </div>
             </div>
