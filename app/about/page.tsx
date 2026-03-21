@@ -119,7 +119,7 @@ export default function AboutPage() {
       <Navigation config={navConfig} />
 
       {/* Hero Section with Gold Accent */}
-      <section className="bg-black text-white py-20 sm:py-32">
+      <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
           <h1 className="text-7xl sm:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold via-gold-light to-gold mb-6">
             {aboutConfig.hero_title || "About TARANA"}
@@ -131,7 +131,7 @@ export default function AboutPage() {
       </section>
 
       {/* Band Members Section */}
-      <section className="py-20 bg-gradient-to-b from-black to-gray-900">
+      <section className="py-10 bg-gradient-to-b from-black to-gray-900">
         <div className="container-custom">
           <h2 className="text-5xl font-display font-bold text-center text-gold mb-16">
             Meet The Band
@@ -188,7 +188,7 @@ export default function AboutPage() {
       </section>
 
       {/* Story Section */}
-      <section className="py-20 bg-gray-900">
+      <section className="py-10 bg-gray-900">
         <div className="container-custom max-w-4xl">
           <h2 className="text-5xl font-display font-bold text-center text-gold mb-12">
             {aboutConfig.story_title || "Our Story"}
@@ -222,7 +222,7 @@ export default function AboutPage() {
       </section>
 
       {/* Call to Action */}
-      <section className="py-20 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
+      <section className="py-12 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
         <div className="container-custom text-center">
           <h2 className="text-4xl md:text-5xl font-display font-bold text-black mb-6">
             Experience TARANA Live

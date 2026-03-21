@@ -61,43 +61,40 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
 
   return (
     <nav className={`${containerClass} text-white`}>
-      <div className="container-custom flex justify-between items-center py-4">
+      <div className="container-custom flex justify-between items-center py-2">
         {/* Logo or Brand */}
-        <Link href="/" className="flex items-center gap-3">
+        <Link href="/">
           {isOverlay && isScrolled ? (
-            // Show black logo when scrolled (dark background)
+            // Show black logo when scrolled (dark background) - SMALL SIZE
             config?.logo_black && (
               <img
                 src={config.logo_black}
                 alt="TARANA Logo"
-                className={`h-8 object-contain`}
+                className={`h-14 object-contain`}
                 title="TARANA"
               />
             )
           ) : isOverlay && !isScrolled ? (
-            // Show white logo when at top (transparent background)
+            // Show white logo when at top (transparent background) - SMALL SIZE
             config?.logo_white && (
               <img
                 src={config.logo_white}
                 alt="TARANA Logo"
-                className={`h-8 object-contain`}
+                className={`h-14 object-contain`}
                 title="TARANA"
               />
             )
           ) : (
-            // For non-overlay navigation, use black logo
+            // For non-overlay navigation, use black logo - SMALL SIZE
             config?.logo_black && (
               <img
                 src={config.logo_black}
                 alt="TARANA Logo"
-                className={`h-10 object-contain`}
+                className={`h-16 object-contain`}
                 title="TARANA"
               />
             )
           )}
-          <span className={`font-bold heading-md ${isOverlay ? 'text-xl' : 'text-2xl'}`}>
-            TARANA
-          </span>
         </Link>
 
         {/* Desktop menu */}

@@ -67,7 +67,7 @@ export default async function ToursPage() {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="bg-black text-white py-16 sm:py-24">
+      <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
           <h1 className="heading-display mb-4 text-red-600">TOUR DATES</h1>
           <p className="text-lg sm:text-xl text-gray-300">
@@ -77,7 +77,7 @@ export default async function ToursPage() {
       </section>
 
       {/* Upcoming Tours */}
-      <section className="py-16 sm:py-24 bg-white">
+      <section className="py-10 sm:py-12 bg-white">
         <div className="container-custom">
           <h2 className="heading-lg mb-12">Upcoming Shows</h2>
 
@@ -123,7 +123,7 @@ export default async function ToursPage() {
 
       {/* Past Tours */}
       {past.length > 0 && (
-        <section className="py-16 sm:py-24 bg-gray-50">
+        <section className="py-10 sm:py-12 bg-gray-50">
           <div className="container-custom">
             <h2 className="heading-lg mb-12">Past Shows</h2>
 
@@ -153,7 +153,7 @@ export default async function ToursPage() {
       )}
 
       {/* CTA Section */}
-      <section className="bg-black text-white py-16 sm:py-24">
+      <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom max-w-2xl mx-auto text-center">
           <h2 className="heading-lg mb-6">Don't Miss A Show</h2>
           <p className="text-lg mb-8 text-gray-300">

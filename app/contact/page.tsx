@@ -116,7 +116,7 @@ export default function ContactPage() {
       <Navigation config={navConfig} />
 
       {/* Hero Section */}
-      <section className="bg-black text-white py-16 sm:py-24">
+      <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
           <h1 className="heading-display mb-4 text-red-600">GET IN TOUCH</h1>
           <p className="text-lg sm:text-xl text-gray-300">
@@ -126,7 +126,7 @@ export default function ContactPage() {
       </section>
 
       {/* Contact Form Section */}
-      <section className="py-16 sm:py-24 bg-white">
+      <section className="py-10 sm:py-12 bg-white">
         <div className="container-custom max-w-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name Field */}
@@ -224,7 +224,7 @@ export default function ContactPage() {
       </section>
 
       {/* Info Section */}
-      <section className="py-16 sm:py-24 bg-gray-50">
+      <section className="py-10 sm:py-12 bg-gray-50">
         <div className="container-custom">
           <h2 className="heading-lg text-center mb-12">Other Ways To Connect</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">

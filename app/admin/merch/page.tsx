@@ -107,31 +107,31 @@ export default function AdminMerchPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Merchandise</h1>
+        <h1 className="text-3xl font-bold text-gold">Merchandise</h1>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
+        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
+          <h2 className="text-xl font-semibold text-gold mb-4">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="name" placeholder="Product Name" value={formData.name || ''} onChange={handleInputChange} required className="px-4 py-2 border-2 border-gray-300 rounded-lg" />
-              <input type="number" name="price" placeholder="Price" step="0.01" value={formData.price || 0} onChange={handleInputChange} className="px-4 py-2 border-2 border-gray-300 rounded-lg" />
+              <input type="text" name="name" placeholder="Product Name" value={formData.name || ''} onChange={handleInputChange} required className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              <input type="number" name="price" placeholder="Price" step="0.01" value={formData.price || 0} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
-            <textarea name="description" placeholder="Description" value={formData.description || ''} onChange={handleInputChange} required className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg" rows={4} />
-            <input type="url" name="external_link" placeholder="Shop Link (https://...)" value={formData.external_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg" />
+            <textarea name="description" placeholder="Description" value={formData.description || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" rows={4} />
+            <input type="url" name="external_link" placeholder="Shop Link (https://...)" value={formData.external_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="image_url" placeholder="Image URL" value={formData.image_url || ''} onChange={handleInputChange} className="px-4 py-2 border-2 border-gray-300 rounded-lg" />
-              <input type="number" name="order_position" placeholder="Order" value={formData.order_position || 0} onChange={handleInputChange} className="px-4 py-2 border-2 border-gray-300 rounded-lg" />
+              <input type="text" name="image_url" placeholder="Image URL" value={formData.image_url || ''} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              <input type="number" name="order_position" placeholder="Order" value={formData.order_position || 0} onChange={handleInputChange} className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="is_active" checked={formData.is_active || false} onChange={handleInputChange} className="w-4 h-4" />
-              <span className="text-sm">Active</span>
+              <span className="text-sm text-gray-300">Active</span>
             </label>
             <div className="flex gap-2">
-              <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg">
+              <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
                 {editingId ? 'Update' : 'Add'} Product
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0 }); }} className="bg-gray-400 hover:bg-gray-500 text-white font-semibold px-6 py-2 rounded-lg">
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0 }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
               )}
@@ -139,18 +139,18 @@ export default function AdminMerchPage() {
           </form>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6 border-b"><h2 className="text-xl font-semibold">Products ({products.length})</h2></div>
-          {loading ? <div className="p-6 text-center">Loading...</div> : products.length === 0 ? <div className="p-6 text-center text-gray-600">No products yet</div> : (
+        <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
+          <div className="p-6 border-b border-gray-700"><h2 className="text-xl font-semibold text-gold">Products ({products.length})</h2></div>
+          {loading ? <div className="p-6 text-center text-gray-400">Loading...</div> : products.length === 0 ? <div className="p-6 text-center text-gray-400">No products yet</div> : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
               {products.map((product) => (
-                <div key={product.id} className="border rounded-lg p-4 hover:shadow-lg transition-shadow">
-                  <h3 className="font-semibold">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">${product.price.toFixed(2)}</p>
-                  <p className="text-sm text-gray-600 mt-2">{product.description.slice(0, 100)}...</p>
+                <div key={product.id} className="border border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gray-700">
+                  <h3 className="font-semibold text-gray-300">{product.name}</h3>
+                  <p className="text-sm text-gray-400 mt-1">${product.price.toFixed(2)}</p>
+                  <p className="text-sm text-gray-400 mt-2">{product.description.slice(0, 100)}...</p>
                   <div className="flex gap-2 mt-4">
-                    <button onClick={() => handleEdit(product)} className="text-blue-600 hover:text-blue-800 text-sm">Edit</button>
-                    <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                    <button onClick={() => handleEdit(product)} className="text-gold hover:text-gold-light text-sm font-semibold">Edit</button>
+                    <button onClick={() => handleDelete(product.id)} className="text-red-400 hover:text-red-300 text-sm font-semibold">Delete</button>
                   </div>
                 </div>
               ))}

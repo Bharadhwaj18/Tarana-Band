@@ -50,7 +50,7 @@ export default async function MerchPage() {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="bg-black text-white py-16 sm:py-24">
+      <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
           <h1 className="heading-display mb-4 text-red-600">MERCHANDISE</h1>
           <p className="text-lg sm:text-xl text-gray-300">
@@ -60,7 +60,7 @@ export default async function MerchPage() {
       </section>
 
       {/* Products Section */}
-      <section className="py-16 sm:py-24 bg-white">
+      <section className="py-10 sm:py-12 bg-white">
         <div className="container-custom">
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -107,7 +107,7 @@ export default async function MerchPage() {
       </section>
 
       {/* Info Section */}
-      <section className="py-16 sm:py-24 bg-gray-900 text-white">
+      <section className="py-10 sm:py-12 bg-gray-900 text-white">
         <div className="container-custom max-w-2xl">
           <h2 className="heading-lg text-center mb-8">Support The Band</h2>
           <p className="text-gray-300 text-center mb-6">

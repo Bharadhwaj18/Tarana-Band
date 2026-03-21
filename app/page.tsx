@@ -217,7 +217,7 @@ export default function Home() {
 
       {/* Stats Section - Making Band Look HUGE */}
       {(stats.shows_played > 0 || stats.fans > 0 || stats.years_active > 0 || stats.albums > 0) && (
-        <section className="py-20 bg-gradient-to-b from-black to-gray-900">
+        <section className="py-10 bg-gradient-to-b from-black to-gray-900">
           <div className="container-custom">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {stats.shows_played > 0 && (
@@ -233,7 +233,7 @@ export default function Home() {
                   <div className="text-6xl md:text-7xl font-bold text-gold mb-2">
                     {(stats.fans / 1000).toFixed(0)}K+
                   </div>
-                  <div className="text-gray-400 text-lg uppercase tracking-widest">Fans Worldwide</div>
+                  <div className="text-gray-400 text-lg uppercase tracking-widest">Streams Across Platforms</div>
                 </div>
               )}
               {stats.years_active > 0 && (
@@ -259,7 +259,7 @@ export default function Home() {
 
       {/* Latest Music Embed Section */}
       {musicEmbed && musicEmbed.embed_url && (
-        <section className="py-20 bg-gray-900">
+        <section className="py-10 bg-gray-900">
           <div className="container-custom">
             <h2 className="text-5xl font-display font-bold text-center text-gold mb-12">
               {musicEmbed.title || 'Listen Now'}
@@ -307,7 +307,7 @@ export default function Home() {
 
       {/* Featured Photos Carousel - Full Width */}
       {featuredPhotos.length > 0 && (
-        <section className="py-20 bg-black overflow-hidden">
+        <section className="py-10 bg-black overflow-hidden">
           <div className="text-center mb-12">
             <h2 className="text-5xl sm:text-6xl font-display font-bold text-gold mb-4">
               On Stage
@@ -421,7 +421,7 @@ export default function Home() {
 
       {/* Quick Access Grid */}
       {(navConfig.show_tours !== false || navConfig.show_merch !== false || navConfig.show_videos !== false) && (
-        <section className="py-20 bg-gradient-to-b from-gray-900 to-black">
+        <section className="py-10 bg-gradient-to-b from-gray-900 to-black">
           <div className="container-custom">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Upcoming Tours - Only show if enabled */}
@@ -493,7 +493,7 @@ export default function Home() {
 
       {/* Call to Action - Only show if contact is enabled */}
       {navConfig.show_contact !== false && (
-        <section className="py-24 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
+        <section className="py-12 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
           <div className="container-custom text-center">
             <h2 className="text-5xl md:text-6xl font-display font-bold text-black mb-6">
               Stay Connected

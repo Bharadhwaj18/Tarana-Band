@@ -477,8 +477,8 @@ export default function AdminSettingsPage() {
             {socialLinks.length > 0 && (
               <div className="mb-6 space-y-3">
                 {socialLinks.map((link, index) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
-                    <div>
+                  <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-700 p-4 rounded-lg">
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white">{link.platform}</p>
                       <p className="text-gray-400 text-sm truncate">{link.url}</p>
                     </div>

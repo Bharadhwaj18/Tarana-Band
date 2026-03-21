@@ -61,7 +61,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="bg-black text-white py-12">
+    <footer className="bg-black text-white py-8">
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
@@ -70,10 +70,9 @@ export default function Footer() {
               <img
                 src={logoBlack}
                 alt="TARANA Logo"
-                className="h-12 object-contain mb-4"
+                className="h-48 object-contain mb-4"
               />
             )}
-            <h3 className="text-xl font-bold mb-4">TARANA</h3>
             <p className="text-gray-400">Official website of Tarana rock band.</p>
           </div>
 

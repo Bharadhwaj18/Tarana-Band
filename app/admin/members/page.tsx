@@ -173,13 +173,13 @@ export default function AdminMembersPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Band Members</h1>
-          <p className="text-gray-600 mt-2">Manage the 7 band members</p>
+          <h1 className="text-3xl font-bold text-gold">Band Members</h1>
+          <p className="text-gray-400 mt-2">Manage the 7 band members</p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">
+        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
+          <h2 className="text-xl font-semibold text-gold mb-4">
             {editingId ? 'Edit Member' : 'Add New Member'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -191,7 +191,7 @@ export default function AdminMembersPage() {
                 value={formData.name || ''}
                 onChange={handleInputChange}
                 required
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
               />
               <input
                 type="text"
@@ -200,7 +200,7 @@ export default function AdminMembersPage() {
                 value={formData.role || ''}
                 onChange={handleInputChange}
                 required
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
               />
             </div>
 
@@ -211,13 +211,13 @@ export default function AdminMembersPage() {
               onChange={handleInputChange}
               required
               rows={4}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Photo Upload Section */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
                   Member Photo
                 </label>
                 {formData.image_url ? (
@@ -230,7 +230,7 @@ export default function AdminMembersPage() {
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, image_url: '', storage_path: '' })}
-                      className="w-full bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm"
+                      className="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
                     >
                       Remove Photo
                     </button>
@@ -246,13 +246,13 @@ export default function AdminMembersPage() {
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-lg file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-red-600 file:text-white
-                        hover:file:bg-red-700
+                        file:bg-gold file:text-black
+                        hover:file:bg-gold-light
                         file:cursor-pointer
                         disabled:opacity-50"
                     />
                     {uploading && (
-                      <p className="text-sm text-gray-600 mt-2">Uploading...</p>
+                      <p className="text-sm text-gold mt-2">Uploading...</p>
                     )}
                   </label>
                 )}
@@ -264,14 +264,14 @@ export default function AdminMembersPage() {
                 placeholder="Order"
                 value={formData.order_position || 0}
                 onChange={handleInputChange}
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                className="px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-gold"
               />
             </div>
 
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
+                className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg transition-colors"
               >
                 {editingId ? 'Update Member' : 'Add Member'}
               </button>
@@ -288,7 +288,7 @@ export default function AdminMembersPage() {
                       order_position: 0,
                     });
                   }}
-                  className="bg-gray-400 hover:bg-gray-500 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
+                  className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -298,42 +298,42 @@ export default function AdminMembersPage() {
         </div>
 
         {/* Members List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">Members ({members.length})</h2>
+        <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
+          <div className="p-6 border-b border-gray-700">
+            <h2 className="text-xl font-semibold text-gold">Members ({members.length})</h2>
           </div>
 
           {loading ? (
-            <div className="p-6 text-center text-gray-600">Loading...</div>
+            <div className="p-6 text-center text-gray-400">Loading...</div>
           ) : members.length === 0 ? (
-            <div className="p-6 text-center text-gray-600">No members yet</div>
+            <div className="p-6 text-center text-gray-400">No members yet</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-700 border-b border-gray-600">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Role</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Order</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Name</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Role</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Order</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-700">
                   {members.map((member) => (
-                    <tr key={member.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 text-sm text-gray-900">{member.name}</td>
-                      <td className="px-6 py-3 text-sm text-gray-600">{member.role}</td>
-                      <td className="px-6 py-3 text-sm text-gray-600">{member.order_position}</td>
-                      <td className="px-6 py-3 text-sm space-x-2">
+                    <tr key={member.id} className="hover:bg-gray-750">
+                      <td className="px-4 py-3 text-gray-300">{member.name}</td>
+                      <td className="px-4 py-3 text-gray-400">{member.role}</td>
+                      <td className="px-4 py-3 text-gray-400">{member.order_position}</td>
+                      <td className="px-4 py-3 space-x-2">
                         <button
                           onClick={() => handleEdit(member)}
-                          className="text-blue-600 hover:text-blue-800 font-semibold"
+                          className="text-gold hover:text-gold-light font-semibold"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(member.id)}
-                          className="text-red-600 hover:text-red-800 font-semibold"
+                          className="text-red-400 hover:text-red-300 font-semibold"
                         >
                           Delete
                         </button>

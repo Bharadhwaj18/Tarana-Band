@@ -41,8 +41,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Sidebar - Desktop */}
       <div className="fixed left-0 top-0 w-64 h-screen bg-black border-r border-gray-800 overflow-y-auto hidden lg:block z-20">
         <div className="p-6 border-b border-gray-800">
-          <h1 className="text-2xl font-bold text-gold mb-2">TARANA</h1>
-          <p className="text-gray-400 text-sm">Admin Panel</p>
+          <p className="text-gray-400 text-sm mb-3">Admin Panel</p>
           <Link
             href="/"
             className="mt-3 inline-flex items-center gap-2 text-gold hover:text-gold-light text-sm transition-colors"
@@ -88,8 +87,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         }`}
       >
         <div className="p-6 border-b border-gray-800">
-          <h1 className="text-2xl font-bold text-gold mb-2">TARANA</h1>
-          <p className="text-gray-400 text-sm">Admin Panel</p>
+          <p className="text-gray-400 text-sm mb-3">Admin Panel</p>
           <Link
             href="/"
             className="mt-3 inline-flex items-center gap-2 text-gold hover:text-gold-light text-sm transition-colors"
@@ -148,7 +146,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 />
               </svg>
             </button>
-            <h1 className="text-xl font-bold text-white hidden sm:block">TARANA Admin</h1>
           </div>
           <button
             onClick={handleLogout}

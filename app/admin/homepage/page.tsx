@@ -356,14 +356,14 @@ export default function AdminHomepagePage() {
   return (
     <AdminLayout>
       <div className="max-w-6xl">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
           <h1 className="text-4xl font-bold text-gold">Edit Homepage</h1>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <a
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600"
+              className="px-6 py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 text-center"
             >
               Preview Website
             </a>
@@ -486,7 +486,7 @@ export default function AdminHomepagePage() {
                 />
               </div>
               <div>
-                <label className="block text-gray-300 mb-2">Fans</label>
+                <label className="block text-gray-300 mb-2">Streams Across Platforms</label>
                 <input
                   type="number"
                   value={fans}

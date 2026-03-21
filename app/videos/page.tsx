@@ -72,7 +72,7 @@ export default function VideosPage() {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="bg-black text-white py-16 sm:py-24">
+      <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
           <h1 className="heading-display mb-4 text-red-600">VIDEOS</h1>
           <p className="text-lg sm:text-xl text-gray-300">
@@ -83,7 +83,7 @@ export default function VideosPage() {
 
       {/* Videos Section */}
       {loading ? (
-        <section className="py-16 sm:py-24 bg-white">
+        <section className="py-10 sm:py-12 bg-white">
           <div className="container-custom text-center">
             <p className="text-gray-600">Loading videos...</p>
           </div>
@@ -118,7 +118,7 @@ export default function VideosPage() {
           )}
 
           {/* Video Grid */}
-          <section className="py-16 sm:py-24 bg-white">
+          <section className="py-10 sm:py-12 bg-white">
             <div className="container-custom">
               <h3 className="heading-md mb-12">All Videos</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -172,7 +172,7 @@ export default function VideosPage() {
           </section>
         </>
       ) : (
-        <section className="py-16 sm:py-24 bg-white">
+        <section className="py-10 sm:py-12 bg-white">
           <div className="container-custom text-center">
             <p className="text-gray-600 text-lg">
               Videos coming soon. Check back later!
