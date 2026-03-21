@@ -12,11 +12,23 @@ interface GalleryPhoto {
   order: number;
 }
 
+interface NavigationConfig {
+  logo_black?: string;
+  logo_white?: string;
+  show_about?: boolean;
+  show_tours?: boolean;
+  show_merch?: boolean;
+  show_videos?: boolean;
+  show_contact?: boolean;
+}
+
 interface HomepageConfig {
   hero?: {
     title: string;
     subtitle: string;
     background_image: string;
+    background_video?: string;
+    video_storage_path?: string;
     cta_text: string;
     cta_link: string;
   };
@@ -38,6 +50,7 @@ interface HomepageConfig {
 
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig>({});
+  const [navConfig, setNavConfig] = useState<NavigationConfig>({});
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -54,14 +67,40 @@ export default function Home() {
       );
 
       // Fetch homepage config (includes featured photos)
-      const { data } = await supabase.from('homepage_config').select('*').eq('is_active', true);
+      const { data: homepageData } = await supabase.from('homepage_config').select('*').eq('is_active', true);
 
-      if (data) {
+      if (homepageData) {
         const configData: HomepageConfig = {};
-        data.forEach((item: any) => {
+        homepageData.forEach((item: any) => {
           configData[item.section_name as keyof HomepageConfig] = item.content;
         });
         setConfig(configData);
+      }
+
+      // Fetch general config (navigation, branding, fonts, social)
+      const { data: generalData } = await supabase
+        .from('general_config')
+        .select('*')
+        .eq('is_active', true);
+
+      if (generalData) {
+        const generalConfig: any = {};
+        generalData.forEach((item: any) => {
+          generalConfig[item.section_name] = item.content;
+        });
+
+        // Build navigation config from branding + navigation sections
+        const navigationConfig: NavigationConfig = {
+          logo_black: generalConfig.branding?.logo_black,
+          logo_white: generalConfig.branding?.logo_white,
+          show_about: generalConfig.navigation?.show_about !== false,
+          show_tours: generalConfig.navigation?.show_tours !== false,
+          show_merch: generalConfig.navigation?.show_merch !== false,
+          show_videos: generalConfig.navigation?.show_videos !== false,
+          show_contact: generalConfig.navigation?.show_contact !== false,
+        };
+
+        setNavConfig(navigationConfig);
       }
 
       setLoading(false);
@@ -116,19 +155,36 @@ export default function Home() {
 
   return (
     <main className="bg-black">
-      <Navigation />
+      {/* Epic Hero Section with Video/Image Background - Navigation Overlaid */}
+      <section className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
+        {/* Background Video */}
+        {hero.background_video && (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src={hero.background_video} type="video/mp4" />
+            <source src={hero.background_video} type="video/webm" />
+          </video>
+        )}
 
-      {/* Epic Hero Section with Background Image */}
-      <section
-        className="relative h-screen flex items-center justify-center overflow-hidden"
-        style={{
-          backgroundImage: hero.background_image
-            ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${hero.background_image})`
-            : 'linear-gradient(135deg, #000000 0%, #1a1a1a 100%)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
+        {/* Fallback Background Image */}
+        {!hero.background_video && hero.background_image && (
+          <div
+            className="absolute inset-0 w-full h-full bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${hero.background_image})`
+            }}
+          />
+        )}
+
+        {/* Navigation Overlay */}
+        <Navigation isOverlay={true} config={navConfig} />
+
         {/* Animated Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black"></div>
 

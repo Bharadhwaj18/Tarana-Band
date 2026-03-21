@@ -29,6 +29,9 @@ export default function AdminHomepagePage() {
   const [heroTitle, setHeroTitle] = useState('TARANA');
   const [heroSubtitle, setHeroSubtitle] = useState('Experience the raw energy of live rock music');
   const [heroBgImage, setHeroBgImage] = useState('');
+  const [heroBgVideo, setHeroBgVideo] = useState('');
+  const [heroVideoStorage, setHeroVideoStorage] = useState('');
+  const [heroVideoUploading, setHeroVideoUploading] = useState(false);
   const [heroCtaText, setHeroCtaText] = useState('View Tours');
   const [heroCtaLink, setHeroCtaLink] = useState('/tours');
 
@@ -92,6 +95,8 @@ export default function AdminHomepagePage() {
               setHeroTitle(content.title || 'TARANA');
               setHeroSubtitle(content.subtitle || 'Experience the raw energy of live rock music');
               setHeroBgImage(content.background_image || '');
+              setHeroBgVideo(content.background_video || '');
+              setHeroVideoStorage(content.video_storage_path || '');
               setHeroCtaText(content.cta_text || 'View Tours');
               setHeroCtaLink(content.cta_link || '/tours');
               break;
@@ -179,6 +184,93 @@ export default function AdminHomepagePage() {
     setDraggedIndex(null);
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 50MB for video)
+    if (file.size > 50 * 1024 * 1024) {
+      setMessage('Video file too large. Maximum 50MB allowed. Please compress your video.');
+      return;
+    }
+
+    // Validate video MIME type
+    const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    if (!validVideoTypes.includes(file.type)) {
+      setMessage(`Invalid video format. Supported: MP4, WebM. Got: ${file.type}`);
+      return;
+    }
+
+    setHeroVideoUploading(true);
+    setMessage('Validating video orientation...');
+
+    // Validate landscape orientation
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+
+    const checkLandscape = () => {
+      return new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => {
+          if (video.videoWidth < video.videoHeight) {
+            reject(new Error('Video must be in landscape orientation (width must be ≥ height)'));
+          } else {
+            resolve();
+          }
+        };
+        video.onerror = () => reject(new Error('Failed to read video metadata'));
+        video.src = URL.createObjectURL(file);
+      });
+    };
+
+    try {
+      await checkLandscape();
+      URL.revokeObjectURL(video.src);
+
+      setMessage('Uploading video to Supabase...');
+
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${file.name.split('.').pop()}`;
+      const filePath = `hero-video/${fileName}`;
+
+      // Upload to Supabase with proper content type
+      const { data, error } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (error) {
+        console.error('Upload error details:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath);
+
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get public URL');
+      }
+
+      setHeroBgVideo(urlData.publicUrl);
+      setHeroVideoStorage(filePath);
+      setMessage('✓ Video uploaded successfully!');
+    } catch (error: any) {
+      console.error('Full video upload error:', error);
+      const errorMsg = error?.message || 'Unknown error occurred';
+      setMessage(`Error: ${errorMsg}`);
+    }
+
+    setHeroVideoUploading(false);
+  };
+
+  const removeVideo = () => {
+    setHeroBgVideo('');
+    setHeroVideoStorage('');
+  };
+
   const saveConfig = async () => {
     setSaving(true);
     setMessage('');
@@ -191,6 +283,8 @@ export default function AdminHomepagePage() {
             title: heroTitle,
             subtitle: heroSubtitle,
             background_image: heroBgImage,
+            background_video: heroBgVideo,
+            video_storage_path: heroVideoStorage,
             cta_text: heroCtaText,
             cta_link: heroCtaLink,
           },
@@ -313,6 +407,50 @@ export default function AdminHomepagePage() {
                   placeholder="Optional background image URL"
                   className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Background Video</label>
+                {heroBgVideo ? (
+                  <div className="space-y-2">
+                    <div className="bg-gray-700 rounded-lg p-3">
+                      <p className="text-sm text-gray-300 truncate">✓ Video uploaded</p>
+                      <video
+                        src={heroBgVideo}
+                        className="w-full h-24 mt-2 rounded object-cover"
+                        muted
+                        playsInline
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeVideo}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+                    >
+                      Remove Video
+                    </button>
+                  </div>
+                ) : (
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoUpload}
+                      disabled={heroVideoUploading}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-gold file:text-black
+                        hover:file:bg-gold-light
+                        file:cursor-pointer
+                        disabled:opacity-50"
+                    />
+                    {heroVideoUploading && (
+                      <p className="text-sm text-gold mt-2">Uploading video...</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">Max 50MB • Landscape orientation • MP4, WebM recommended</p>
+                  </label>
+                )}
               </div>
               <div>
                 <label className="block text-gray-300 mb-2">Call-to-Action Link</label>

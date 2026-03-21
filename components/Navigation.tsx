@@ -3,27 +3,65 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-export default function Navigation() {
+interface NavigationConfig {
+  logo_black?: string;
+  logo_white?: string;
+  show_about?: boolean;
+  show_tours?: boolean;
+  show_merch?: boolean;
+  show_videos?: boolean;
+  show_contact?: boolean;
+}
+
+interface NavigationProps {
+  isOverlay?: boolean;
+  config?: NavigationConfig;
+}
+
+export default function Navigation({ isOverlay = false, config }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems = [
-    { href: '/', label: 'Home' },
-    { href: '/about', label: 'About Us' },
-    { href: '/tours', label: 'Tours' },
-    { href: '/merch', label: 'Merch' },
-    { href: '/videos', label: 'Videos' },
-    { href: '/contact', label: 'Contact' },
+  // Build nav items based on config
+  const baseNavItems = [
+    { href: '/about', label: 'About Us', configKey: 'show_about' as const },
+    { href: '/tours', label: 'Tours', configKey: 'show_tours' as const },
+    { href: '/merch', label: 'Merch', configKey: 'show_merch' as const },
+    { href: '/videos', label: 'Videos', configKey: 'show_videos' as const },
+    { href: '/contact', label: 'Contact', configKey: 'show_contact' as const },
   ];
 
+  // Filter nav items based on config (default to true if config not provided)
+  const navItems = baseNavItems.filter(item => {
+    if (!config || config[item.configKey] === undefined) {
+      return true; // Show by default
+    }
+    return config[item.configKey];
+  });
+
+  const containerClass = isOverlay
+    ? 'fixed top-0 left-0 right-0 z-30 bg-black/70 backdrop-blur-sm'
+    : 'bg-black text-white';
+
   return (
-    <nav className="bg-black text-white">
+    <nav className={`${containerClass} text-white`}>
       <div className="container-custom flex justify-between items-center py-4">
-        <Link href="/" className="text-2xl font-bold heading-md">
-          TARANA
+        {/* Logo or Brand */}
+        <Link href="/" className="flex items-center gap-3">
+          {config?.logo_black && (
+            <img
+              src={config.logo_black}
+              alt="TARANA Logo"
+              className={`${isOverlay ? 'h-8' : 'h-10'} object-contain`}
+              title="TARANA"
+            />
+          )}
+          <span className={`font-bold heading-md ${isOverlay ? 'text-xl' : 'text-2xl'}`}>
+            TARANA
+          </span>
         </Link>
 
         {/* Desktop menu */}
-        <div className="hidden md:flex gap-8">
+        <div className="hidden md:flex gap-8 items-center">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -62,7 +100,7 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden bg-gray-900 p-4 space-y-4">
+        <div className={`md:hidden ${isOverlay ? 'bg-black/90' : 'bg-gray-900'} p-4 space-y-4`}>
           {navItems.map((item) => (
             <Link
               key={item.href}
