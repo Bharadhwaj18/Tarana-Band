@@ -36,10 +36,10 @@ export default function AdminHomepagePage() {
   const [heroCtaLink, setHeroCtaLink] = useState('/tours');
 
   // Stats
-  const [showsPlayed, setShowsPlayed] = useState(150);
-  const [fans, setFans] = useState(50000);
-  const [yearsActive, setYearsActive] = useState(5);
-  const [albums, setAlbums] = useState(3);
+  const [showsPlayed, setShowsPlayed] = useState(0);
+  const [fans, setFans] = useState(0);
+  const [yearsActive, setYearsActive] = useState(0);
+  const [albums, setAlbums] = useState(0);
 
   // Music Embed
   const [musicType, setMusicType] = useState<'spotify' | 'youtube'>('spotify');
@@ -105,10 +105,10 @@ export default function AdminHomepagePage() {
               setHeroCtaLink(content.cta_link || '/tours');
               break;
             case 'stats':
-              setShowsPlayed(content.shows_played || 150);
-              setFans(content.fans || 50000);
-              setYearsActive(content.years_active || 5);
-              setAlbums(content.albums || 3);
+              setShowsPlayed(content.shows_played ?? 0);
+              setFans(content.fans ?? 0);
+              setYearsActive(content.years_active ?? 0);
+              setAlbums(content.albums ?? 0);
               break;
             case 'music_embed':
               setMusicType(content.type || 'spotify');
