@@ -33,6 +33,7 @@ export default function AdminMerchPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) router.push('/admin/login');
       else {
@@ -44,6 +45,7 @@ export default function AdminMerchPage() {
   }, [router]);
 
   const fetchProducts = async () => {
+    if (!supabase) return;
     try {
       const { data } = await supabase.from('merchandise').select('*').order('order_position');
       setProducts(data || []);
@@ -63,6 +65,7 @@ export default function AdminMerchPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if (!supabase) return;
     e.preventDefault();
     if (!formData.name || !formData.description || !formData.external_link) {
       alert('Please fill required fields');
@@ -89,6 +92,7 @@ export default function AdminMerchPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!supabase) return;
     if (!confirm('Delete this product?')) return;
     try {
       await supabase.from('merchandise').delete().eq('id', id);

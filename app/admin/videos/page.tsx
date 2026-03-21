@@ -33,6 +33,11 @@ export default function AdminVideosPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) {
+        router.push('/admin/login');
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) router.push('/admin/login');
       else {
@@ -44,6 +49,8 @@ export default function AdminVideosPage() {
   }, [router]);
 
   const fetchVideos = async () => {
+    if (!supabase) return;
+
     try {
       const { data } = await supabase.from('videos').select('*').order('order_position');
       setVideos(data || []);

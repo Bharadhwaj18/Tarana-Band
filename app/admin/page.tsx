@@ -9,6 +9,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {

@@ -34,6 +34,7 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error || !user) {
         router.push('/admin/login');
@@ -46,6 +47,7 @@ export default function AdminMembersPage() {
   }, [router]);
 
   const fetchMembers = async () => {
+    if (!supabase) return;
     try {
       const { data, error } = await supabase
         .from('band_members')
@@ -70,6 +72,7 @@ export default function AdminMembersPage() {
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -97,6 +100,7 @@ export default function AdminMembersPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if (!supabase) return;
     e.preventDefault();
 
     if (!formData.name || !formData.role || !formData.bio) {
@@ -141,6 +145,7 @@ export default function AdminMembersPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!supabase) return;
     if (!confirm('Are you sure?')) return;
 
     try {

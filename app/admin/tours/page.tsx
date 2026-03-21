@@ -32,6 +32,7 @@ export default function AdminToursPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) router.push('/admin/login');
       else {
@@ -43,6 +44,7 @@ export default function AdminToursPage() {
   }, [router]);
 
   const fetchTours = async () => {
+    if (!supabase) return;
     try {
       const { data } = await supabase
         .from('tours')
@@ -62,6 +64,7 @@ export default function AdminToursPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if (!supabase) return;
     e.preventDefault();
     if (!formData.date || !formData.venue_name || !formData.city || !formData.ticket_link) {
       alert('Please fill in all required fields');
@@ -95,6 +98,7 @@ export default function AdminToursPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!supabase) return;
     if (!confirm('Delete this tour?')) return;
     try {
       await supabase.from('tours').delete().eq('id', id);

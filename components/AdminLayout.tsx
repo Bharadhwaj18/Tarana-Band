@@ -12,6 +12,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     router.push('/admin/login');
   };

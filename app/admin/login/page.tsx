@@ -12,6 +12,10 @@ export default function AdminLoginPage() {
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
+    if (!supabase) {
+      setError('Supabase is not configured. Please check your environment variables.');
+      return;
+    }
     e.preventDefault();
     setError('');
     setLoading(true);

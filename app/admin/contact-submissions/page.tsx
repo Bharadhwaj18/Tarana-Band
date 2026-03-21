@@ -21,6 +21,7 @@ export default function AdminContactPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) router.push('/admin/login');
       else {
@@ -32,6 +33,7 @@ export default function AdminContactPage() {
   }, [router]);
 
   const fetchSubmissions = async () => {
+    if (!supabase) return;
     try {
       const { data } = await supabase.from('contact_submissions').select('*').order('submitted_at', { ascending: false });
       setSubmissions(data || []);
@@ -43,6 +45,7 @@ export default function AdminContactPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!supabase) return;
     if (!confirm('Delete this submission?')) return;
     try {
       await supabase.from('contact_submissions').delete().eq('id', id);

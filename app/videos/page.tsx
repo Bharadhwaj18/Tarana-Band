@@ -24,6 +24,11 @@ export default function VideosPage() {
 
   useEffect(() => {
     const fetchVideos = async () => {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('videos')

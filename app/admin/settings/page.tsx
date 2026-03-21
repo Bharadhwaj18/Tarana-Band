@@ -56,6 +56,7 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/admin/login');
@@ -68,6 +69,7 @@ export default function AdminSettingsPage() {
   }, [router]);
 
   const fetchConfig = async () => {
+    if (!supabase) return;
     try {
       const { data } = await supabase
         .from('general_config')
@@ -109,6 +111,7 @@ export default function AdminSettingsPage() {
   };
 
   const handleLogoUpload = async (file: File, isBlack: boolean) => {
+    if (!supabase) return;
     if (file.size > 5 * 1024 * 1024) {
       setMessage('Logo file too large. Maximum 5MB allowed.');
       return;
@@ -198,6 +201,7 @@ export default function AdminSettingsPage() {
   };
 
   const saveConfig = async () => {
+    if (!supabase) return;
     setSaving(true);
     setMessage('');
 

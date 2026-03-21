@@ -13,6 +13,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (error || !user) {

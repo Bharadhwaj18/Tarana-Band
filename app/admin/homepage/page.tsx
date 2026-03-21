@@ -54,6 +54,7 @@ export default function AdminHomepagePage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/admin/login');
@@ -67,6 +68,7 @@ export default function AdminHomepagePage() {
   }, [router]);
 
   const fetchGalleryPhotos = async () => {
+    if (!supabase) return;
     try {
       const { data } = await supabase
         .from('gallery_photos')
@@ -82,6 +84,7 @@ export default function AdminHomepagePage() {
   };
 
   const fetchConfig = async () => {
+    if (!supabase) return;
     try {
       const { data } = await supabase
         .from('homepage_config')
@@ -187,6 +190,7 @@ export default function AdminHomepagePage() {
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -274,6 +278,7 @@ export default function AdminHomepagePage() {
   };
 
   const saveConfig = async () => {
+    if (!supabase) return;
     setSaving(true);
     setMessage('');
 
