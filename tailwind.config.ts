@@ -9,7 +9,12 @@ const config: Config = {
     extend: {
       colors: {
         primary: "#000000",
-        secondary: "#FFFFFF",
+        secondary: "#FFD700",
+        gold: {
+          DEFAULT: "#FFD700",
+          light: "#FFED4E",
+          dark: "#D4AF37",
+        },
       },
       fontFamily: {
         display: ["Righteous", "sans-serif"],

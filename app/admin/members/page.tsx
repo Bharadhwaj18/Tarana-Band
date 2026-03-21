@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
+import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils';
 
 interface BandMember {
   id: string;
@@ -11,18 +12,21 @@ interface BandMember {
   role: string;
   bio: string;
   image_url: string | null;
+  storage_path?: string | null;
   order_position: number;
 }
 
 export default function AdminMembersPage() {
   const [members, setMembers] = useState<BandMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<BandMember>>({
     name: '',
     role: '',
     bio: '',
     image_url: '',
+    storage_path: '',
     order_position: 0,
   });
   const [user, setUser] = useState<any>(null);
@@ -65,6 +69,33 @@ export default function AdminMembersPage() {
     }));
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const uploadResult = await uploadImageToSupabase(supabase, file, 'band-members');
+
+      if (uploadResult) {
+        setFormData((prev) => ({
+          ...prev,
+          image_url: uploadResult.url,
+          storage_path: uploadResult.path,
+        }));
+        alert('Photo uploaded successfully!');
+      } else {
+        alert('Error uploading photo');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Error uploading photo');
+    }
+
+    setUploading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -93,6 +124,7 @@ export default function AdminMembersPage() {
         role: '',
         bio: '',
         image_url: '',
+        storage_path: '',
         order_position: 0,
       });
       setEditingId(null);
@@ -112,6 +144,15 @@ export default function AdminMembersPage() {
     if (!confirm('Are you sure?')) return;
 
     try {
+      // First, find the member to get their photo storage path
+      const memberToDelete = members.find(m => m.id === id);
+
+      // Delete photo from storage if it exists
+      if (memberToDelete?.storage_path) {
+        await deleteImageFromSupabase(supabase, memberToDelete.storage_path);
+      }
+
+      // Delete member from database
       const { error } = await supabase.from('band_members').delete().eq('id', id);
       if (error) throw error;
       fetchMembers();
@@ -169,14 +210,49 @@ export default function AdminMembersPage() {
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="image_url"
-                placeholder="Image URL (or leave empty)"
-                value={formData.image_url || ''}
-                onChange={handleInputChange}
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
-              />
+              {/* Photo Upload Section */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Member Photo
+                </label>
+                {formData.image_url ? (
+                  <div className="space-y-2">
+                    <img
+                      src={formData.image_url}
+                      alt="Member preview"
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, image_url: '', storage_path: '' })}
+                      className="w-full bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      Remove Photo
+                    </button>
+                  </div>
+                ) : (
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      disabled={uploading}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-red-600 file:text-white
+                        hover:file:bg-red-700
+                        file:cursor-pointer
+                        disabled:opacity-50"
+                    />
+                    {uploading && (
+                      <p className="text-sm text-gray-600 mt-2">Uploading...</p>
+                    )}
+                  </label>
+                )}
+              </div>
+
               <input
                 type="number"
                 name="order_position"

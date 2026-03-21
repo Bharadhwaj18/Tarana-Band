@@ -18,6 +18,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const menuItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
+    { href: '/admin/homepage', label: 'Homepage', icon: '🏠' },
+    { href: '/admin/about', label: 'About Page', icon: '📖' },
+    { href: '/admin/gallery', label: 'Photo Gallery', icon: '📸' },
     { href: '/admin/members', label: 'Band Members', icon: '👥' },
     { href: '/admin/tours', label: 'Tours & Events', icon: '🎤' },
     { href: '/admin/merch', label: 'Merchandise', icon: '🛍️' },
@@ -32,6 +35,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="p-6 border-b border-gray-800">
           <h1 className="text-2xl font-bold">TARANA</h1>
           <p className="text-gray-400 text-sm">Admin Panel</p>
+          <Link
+            href="/"
+            className="mt-3 inline-flex items-center gap-2 text-gold hover:text-gold-light text-sm transition-colors"
+          >
+            <span>←</span>
+            <span>Back to Site</span>
+          </Link>
         </div>
 
         <nav className="mt-6">

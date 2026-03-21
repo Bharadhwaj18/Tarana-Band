@@ -17,8 +17,10 @@
 
 :root {
   --primary: #000000;
-  --secondary: #FFFFFF;
-  --accent: #FF0000;
+  --secondary: #FFD700;
+  --gold: #FFD700;
+  --gold-light: #FFED4E;
+  --gold-dark: #D4AF37;
 }
 
 * {

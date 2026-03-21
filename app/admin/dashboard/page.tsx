@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import AdminLayout from '@/components/AdminLayout';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -26,11 +27,6 @@ export default function AdminDashboard() {
     checkAuth();
   }, [router]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/admin/login');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -44,37 +40,21 @@ export default function AdminDashboard() {
   }
 
   const menuItems = [
+    { href: '/admin/homepage', label: 'Homepage', icon: '🏠' },
     { href: '/admin/members', label: 'Band Members', icon: '👥' },
     { href: '/admin/tours', label: 'Tours & Events', icon: '🎤' },
     { href: '/admin/merch', label: 'Merchandise', icon: '🛍️' },
     { href: '/admin/videos', label: 'Videos', icon: '🎥' },
-    { href: '/admin/contact-submissions', label: 'Contact Submissions', icon: '📧' },
+    { href: '/admin/contact-submissions', label: 'Contact Messages', icon: '📧' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-black text-white p-6 shadow-lg">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">TARANA Admin</h1>
-            <p className="text-gray-400 text-sm mt-1">Logged in as {user.email}</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-6">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
-          <p className="text-gray-600">
-            Manage all Tarana website content from here.
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Welcome back! Logged in as {user.email}
           </p>
         </div>
 
@@ -115,7 +95,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
