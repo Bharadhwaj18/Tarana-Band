@@ -11,7 +11,9 @@ interface Product {
   name: string;
   description: string;
   image_url: string | null;
+  image_urls?: string[] | null;
   storage_path?: string | null;
+  storage_paths?: string[] | null;
   price: number;
   external_link: string;
   is_active: boolean;
@@ -31,7 +33,9 @@ export default function AdminMerchPage() {
     is_active: true,
     order_position: 0,
     image_url: '',
+    image_urls: [],
     storage_path: '',
+    storage_paths: [],
   });
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
@@ -97,6 +101,54 @@ export default function AdminMerchPage() {
     setUploading(false);
   };
 
+  const handleMultiplePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    if (!supabase) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const uploadResult = await uploadImageToSupabase(supabase, file, 'merchandise');
+
+      if (uploadResult) {
+        setFormData((prev) => {
+          const imageUrls = prev.image_urls ? [...prev.image_urls] : ['', '', ''];
+          const storagePaths = prev.storage_paths ? [...prev.storage_paths] : ['', '', ''];
+          imageUrls[index] = uploadResult.url;
+          storagePaths[index] = uploadResult.path;
+          return {
+            ...prev,
+            image_urls: imageUrls,
+            storage_paths: storagePaths,
+          };
+        });
+        alert('Photo uploaded successfully!');
+      } else {
+        alert('Error uploading photo');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Error uploading photo');
+    }
+
+    setUploading(false);
+  };
+
+  const removeImage = (index: number) => {
+    setFormData((prev) => {
+      const imageUrls = prev.image_urls ? [...prev.image_urls] : ['', '', ''];
+      const storagePaths = prev.storage_paths ? [...prev.storage_paths] : ['', '', ''];
+      imageUrls[index] = '';
+      storagePaths[index] = '';
+      return {
+        ...prev,
+        image_urls: imageUrls,
+        storage_paths: storagePaths,
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     if (!supabase) return;
     e.preventDefault();
@@ -106,16 +158,35 @@ export default function AdminMerchPage() {
     }
 
     try {
+      // Prepare data - only use the new array columns, remove old singular columns
+      const { image_url, storage_path, ...restFormData } = formData;
+
+      const dataToSave = {
+        ...restFormData,
+        image_urls: formData.image_urls?.filter(url => url) || null,
+        storage_paths: formData.storage_paths?.filter(path => path) || null,
+      };
+
+      let result;
       if (editingId) {
-        await supabase.from('merchandise').update(formData).eq('id', editingId);
+        result = await supabase.from('merchandise').update(dataToSave).eq('id', editingId);
       } else {
-        await supabase.from('merchandise').insert([formData]);
+        result = await supabase.from('merchandise').insert([dataToSave]);
       }
-      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', storage_path: '' });
+
+      if (result.error) {
+        console.error('Database error:', result.error);
+        alert(`Error saving product: ${result.error.message}`);
+        return;
+      }
+
+      alert('Product saved successfully!');
+      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [] });
       setEditingId(null);
       fetchProducts();
     } catch (error) {
       console.error('Error:', error);
+      alert('Error saving product. Check console for details.');
     }
   };
 
@@ -128,12 +199,21 @@ export default function AdminMerchPage() {
     if (!supabase) return;
     if (!confirm('Delete this product?')) return;
     try {
-      // First, find the product to get its photo storage path
+      // First, find the product to get its photo storage paths
       const productToDelete = products.find(p => p.id === id);
 
       // Delete photo from storage if it exists
       if (productToDelete?.storage_path) {
         await deleteImageFromSupabase(supabase, productToDelete.storage_path);
+      }
+
+      // Delete all images from storage_paths if they exist
+      if (productToDelete?.storage_paths && Array.isArray(productToDelete.storage_paths)) {
+        for (const path of productToDelete.storage_paths) {
+          if (path) {
+            await deleteImageFromSupabase(supabase, path);
+          }
+        }
       }
 
       await supabase.from('merchandise').delete().eq('id', id);
@@ -171,53 +251,47 @@ export default function AdminMerchPage() {
               <label className="block text-sm font-semibold text-gray-300 mb-2">Shop Link</label>
               <input type="url" name="external_link" value={formData.external_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Photo Upload Section */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                  Product Image
-                </label>
-                {formData.image_url ? (
-                  <div className="space-y-2">
-                    <img
-                      src={formData.image_url}
-                      alt="Product preview"
-                      className="w-full h-40 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, image_url: '', storage_path: '' })}
-                      className="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
-                    >
-                      Remove Photo
-                    </button>
-                  </div>
-                ) : (
-                  <label className="block">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      disabled={uploading}
-                      className="block w-full text-sm text-gray-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-lg file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-gold file:text-black
-                        hover:file:bg-gold-light
-                        file:cursor-pointer
-                        disabled:opacity-50"
-                    />
-                    {uploading && (
-                      <p className="text-sm text-gold mt-2">Uploading...</p>
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Product Images (up to 3)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[0, 1, 2].map((index) => (
+                  <div key={index} className="space-y-2">
+                    <p className="text-xs text-gray-400">Image {index + 1}</p>
+                    {formData.image_urls?.[index] ? (
+                      <div className="space-y-2">
+                        <img
+                          src={formData.image_urls[index]}
+                          alt={`Product preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="w-full bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="block border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gold transition">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleMultiplePhotoUpload(e, index)}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                        <span className="text-xs text-gray-400">Click to upload</span>
+                        {uploading && <p className="text-xs text-gold mt-1">Uploading...</p>}
+                      </label>
                     )}
-                  </label>
-                )}
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
-                <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
+              <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="is_active" checked={formData.is_active || false} onChange={handleInputChange} className="w-4 h-4" />
@@ -228,7 +302,7 @@ export default function AdminMerchPage() {
                 {editingId ? 'Update' : 'Add'} Product
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', storage_path: '' }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [] }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
               )}
@@ -243,7 +317,7 @@ export default function AdminMerchPage() {
               {products.map((product) => (
                 <div key={product.id} className="border border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gray-700">
                   <h3 className="font-semibold text-gray-300">{product.name}</h3>
-                  <p className="text-sm text-gray-400 mt-1">${product.price.toFixed(2)}</p>
+                  <p className="text-sm text-gray-400 mt-1">₹{product.price.toFixed(2)}</p>
                   <p className="text-sm text-gray-400 mt-2">{product.description.slice(0, 100)}...</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => handleEdit(product)} className="text-gold hover:text-gold-light text-sm font-semibold">Edit</button>

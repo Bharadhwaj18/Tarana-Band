@@ -1,5 +1,6 @@
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import ProductCard from '@/components/ProductCard';
 
 export const revalidate = 60; // Revalidate every 60 seconds (ISR)
 
@@ -8,6 +9,7 @@ interface Product {
   name: string;
   description: string;
   image_url: string | null;
+  image_urls?: string[] | null;
   price: number;
   external_link: string;
   is_active: boolean;
@@ -68,35 +70,7 @@ export default async function MerchPage() {
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  {product.image_url && (
-                    <div className="w-full h-64 bg-gray-200 overflow-hidden">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                  )}
-                  <div className="p-6">
-                    <h3 className="heading-md mb-2">{product.name}</h3>
-                    <p className="text-red-600 font-bold text-lg mb-3">
-                      ₹{product.price.toFixed(2)}
-                    </p>
-                    <p className="text-gray-600 mb-6">{product.description}</p>
-                    <a
-                      href={product.external_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-primary block text-center"
-                    >
-                      Buy Now
-                    </a>
-                  </div>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : (

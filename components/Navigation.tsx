@@ -40,7 +40,7 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
 
   // Build nav items based on config
   const baseNavItems = [
-    { href: '/', label: 'Home', configKey: null as const },
+    { href: '/', label: 'Home', configKey: 'home' as const },
     { href: '/about', label: 'About Us', configKey: 'show_about' as const },
     { href: '/tours', label: 'Tours', configKey: 'show_tours' as const },
     { href: '/merch', label: 'Merch', configKey: 'show_merch' as const },
@@ -55,7 +55,7 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
       return false;
     }
     // Always show Home when not on home page
-    if (item.configKey === null) {
+    if (item.configKey === 'home') {
       return true;
     }
     if (!config || config[item.configKey] === undefined) {
