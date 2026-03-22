@@ -38,7 +38,7 @@ export default function AdminAboutPage() {
     );
 
     const { data, error } = await supabase
-      .from('about_config')
+      .from('general_config')
       .select('content')
       .eq('section_name', 'about_page')
       .single();
@@ -68,10 +68,11 @@ export default function AdminAboutPage() {
     );
 
     const { error } = await supabase
-      .from('about_config')
+      .from('general_config')
       .upsert({
         section_name: 'about_page',
         content: config,
+        is_active: true,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'section_name'

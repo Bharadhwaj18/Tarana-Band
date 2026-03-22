@@ -87,7 +87,7 @@ export default function AdminHomepagePage() {
     if (!supabase) return;
     try {
       const { data } = await supabase
-        .from('homepage_config')
+        .from('general_config')
         .select('*')
         .eq('is_active', true);
 
@@ -324,7 +324,7 @@ export default function AdminHomepagePage() {
 
       for (const section of sections) {
         await supabase
-          .from('homepage_config')
+          .from('general_config')
           .upsert({
             ...section,
             is_active: true,

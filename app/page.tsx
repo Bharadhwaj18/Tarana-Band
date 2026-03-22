@@ -72,7 +72,7 @@ export default function Home() {
       );
 
       // Fetch homepage config (includes featured photos)
-      const { data: homepageData } = await supabase.from('homepage_config').select('*').eq('is_active', true);
+      const { data: homepageData } = await supabase.from('general_config').select('*').eq('is_active', true);
 
       if (homepageData) {
         const configData: HomepageConfig = {};

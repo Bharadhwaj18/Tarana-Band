@@ -72,7 +72,7 @@ export default function AboutPage() {
 
       // Fetch about page config
       const { data: configData, error: configError } = await supabase
-        .from('about_config')
+        .from('general_config')
         .select('content')
         .eq('section_name', 'about_page')
         .single();
@@ -121,10 +121,10 @@ export default function AboutPage() {
       {/* Hero Section with Gold Accent */}
       <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
-          <h1 className="text-7xl sm:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold via-gold-light to-gold mb-6">
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold via-gold-light to-gold mb-6">
             {aboutConfig.hero_title || "About TARANA"}
           </h1>
-          <p className="text-xl sm:text-2xl text-gray-300 max-w-3xl">
+          <p className="text-base sm:text-lg lg:text-2xl text-gray-300 w-full">
             {aboutConfig.hero_description || "Tarana is a dynamic rock band with electrifying performances and unforgettable music."}
           </p>
         </div>

@@ -31,16 +31,16 @@ export default function TestPage() {
           setStatus(prev => prev + '\n✅ Band members table connected');
         }
 
-        // Test homepage_config table
+        // Test general_config table
         const { data: homepageData, error: homepageError } = await supabase
-          .from('homepage_config')
+          .from('general_config')
           .select('*');
 
         if (homepageError) {
-          setErrors(prev => [...prev, `Homepage Config Error: ${homepageError.message}`]);
+          setErrors(prev => [...prev, `General Config Error: ${homepageError.message}`]);
         } else {
           setHomepage(homepageData || []);
-          setStatus(prev => prev + '\n✅ Homepage config table connected');
+          setStatus(prev => prev + '\n✅ General config table connected');
         }
 
       } catch (error: any) {
