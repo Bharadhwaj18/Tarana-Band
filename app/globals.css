@@ -42,7 +42,7 @@ body {
 
 /* Utility classes */
 .container-custom {
-  @apply max-w-7xl mx-auto px-1 sm:px-2 lg:px-2;
+  @apply max-w-7xl mx-auto px-6 sm:px-8 lg:px-2;
 }
 
 .heading-display {

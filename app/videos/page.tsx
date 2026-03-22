@@ -157,7 +157,6 @@ export default function VideosPage() {
                           title={selectedVideo.title}
                           className="w-full h-full"
                           frameBorder="0"
-                          autoPlay
                           allowFullScreen
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         />

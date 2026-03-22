@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 interface GalleryPhoto {
   id: string;
   title: string | null;
+  subtitle?: string | null;
   image_url: string;
   order: number;
 }
@@ -72,7 +73,17 @@ export default function Home() {
       );
 
       // Fetch homepage config (includes featured photos)
-      const { data: homepageData } = await supabase.from('general_config').select('*').eq('is_active', true);
+      const { data: allConfigData, error: allConfigError } = await supabase
+        .from('general_config')
+        .select('*');
+
+
+      const { data: homepageData, error: homepageError } = await supabase
+        .from('general_config')
+        .select('*')
+        .eq('is_active', true)
+        .in('section_name', ['hero', 'stats', 'music_embed', 'featured_photos']);
+
 
       if (homepageData) {
         const configData: HomepageConfig = {};
@@ -427,6 +438,15 @@ export default function Home() {
                           {index + 1} / {featuredPhotos.length}
                         </span>
                       </div>
+
+                      {/* Subtitle Overlay */}
+                      {photo.subtitle && (
+                        <div className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 z-20 max-w-4xl px-4">
+                          <p className="text-white text-xl sm:text-2xl md:text-3xl font-semibold text-center leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                            {photo.subtitle}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

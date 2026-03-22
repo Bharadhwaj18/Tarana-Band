@@ -14,6 +14,7 @@ interface GalleryPhoto {
 interface FeaturedPhoto {
   id: string;
   title: string | null;
+  subtitle: string | null;
   image_url: string;
   order: number;
 }
@@ -86,10 +87,11 @@ export default function AdminHomepagePage() {
   const fetchConfig = async () => {
     if (!supabase) return;
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('general_config')
         .select('*')
         .eq('is_active', true);
+
 
       if (data) {
         data.forEach((item: any) => {
@@ -143,6 +145,7 @@ export default function AdminHomepagePage() {
     const newFeatured: FeaturedPhoto = {
       id: photo.id,
       title: photo.title,
+      subtitle: null,
       image_url: photo.image_url,
       order: featuredPhotos.length
     };
@@ -322,8 +325,9 @@ export default function AdminHomepagePage() {
         },
       ];
 
+
       for (const section of sections) {
-        await supabase
+        const result = await supabase
           .from('general_config')
           .upsert({
             ...section,
@@ -594,24 +598,45 @@ export default function AdminHomepagePage() {
                     .map((photo, index) => (
                       <div
                         key={photo.id}
-                        draggable
-                        onDragStart={() => handleDragStart(index)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, index)}
-                        className="relative bg-gray-700 rounded-lg overflow-hidden cursor-move hover:shadow-lg hover:shadow-gold/20 transition-all"
+                        className="relative bg-gray-700 rounded-lg overflow-hidden hover:shadow-lg hover:shadow-gold/20 transition-all"
                       >
-                        <img
-                          src={photo.image_url}
-                          alt={photo.title || 'Featured photo'}
-                          className="w-full h-48 object-cover"
-                        />
-                        <div className="p-3">
+                        <div
+                          draggable
+                          onDragStart={() => handleDragStart(index)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, index)}
+                          className="cursor-move"
+                        >
+                          <img
+                            src={photo.image_url}
+                            alt={photo.title || 'Featured photo'}
+                            className="w-full h-48 object-cover"
+                          />
+                        </div>
+                        <div className="p-3 space-y-2">
                           <p className="text-white text-sm font-semibold">
                             {index + 1}. {photo.title || 'Untitled'}
                           </p>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">
+                              Subtitle (displayed on carousel)
+                            </label>
+                            <input
+                              type="text"
+                              value={photo.subtitle || ''}
+                              onChange={(e) => {
+                                const updated = featuredPhotos.map((fp, i) =>
+                                  i === index ? { ...fp, subtitle: e.target.value } : fp
+                                );
+                                setFeaturedPhotos(updated);
+                              }}
+                              placeholder="Add a subtitle..."
+                              className="w-full px-2 py-1 bg-gray-600 text-white text-xs rounded border border-gray-500 focus:border-gold focus:outline-none"
+                            />
+                          </div>
                           <button
                             onClick={() => removeFromFeatured(photo.id)}
-                            className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
+                            className="w-full px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
                           >
                             Remove
                           </button>
