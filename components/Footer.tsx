@@ -75,7 +75,7 @@ export default function Footer() {
                 className="h-48 object-contain mb-4"
               />
             )}
-            <p className="text-gray-400">Official website of Tarana rock band.</p>
+            <p className="text-gray-400">Official website of Tarana the band.</p>
           </div>
 
           {/* Quick Links */}

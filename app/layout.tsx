@@ -11,9 +11,9 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "Tarana - Rock Band",
-    description: "Official website of Tarana rock band.",
-    url: "https://tarana.band",
+    title: "Tarana",
+    description: "Official website of Tarana the band.",
+    url: "https://taranaband.in",
     type: "website",
   },
 };
