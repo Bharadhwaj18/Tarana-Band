@@ -155,20 +155,6 @@ export default async function ToursPage() {
         </section>
       )}
 
-      {/* CTA Section */}
-      <section className="bg-black text-white py-10 sm:py-12">
-        <div className="container-custom max-w-2xl mx-auto text-center">
-          <h2 className="heading-lg mb-6">Don't Miss A Show</h2>
-          <p className="text-lg mb-8 text-gray-300">
-            Subscribe to our newsletter for tour announcements and exclusive
-            updates.
-          </p>
-          <a href="/contact" className="btn-primary">
-            Stay Updated
-          </a>
-        </div>
-      </section>
-
       <Footer />
     </main>
   );

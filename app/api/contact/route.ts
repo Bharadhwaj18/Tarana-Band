@@ -56,12 +56,130 @@ export async function POST(request: NextRequest) {
         replyTo: body.email,
         subject: `New Contact Form Submission from ${body.name}`,
         html: `
-          <h2>New Contact Form Submission</h2>
-          <p><strong>Name:</strong> ${body.name}</p>
-          <p><strong>Email:</strong> ${body.email}</p>
-          ${body.phone ? `<p><strong>Phone:</strong> ${body.phone}</p>` : ''}
-          <p><strong>Message:</strong></p>
-          <p>${body.message.replace(/\n/g, '<br>')}</p>
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  background-color: #f5f5f5;
+                  margin: 0;
+                  padding: 0;
+                }
+                .container {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  background-color: #ffffff;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                  overflow: hidden;
+                }
+                .header {
+                  background: linear-gradient(135deg, #1a5f3b 0%, #2d8a5d 100%);
+                  color: white;
+                  padding: 30px;
+                  text-align: center;
+                }
+                .header h1 {
+                  margin: 0;
+                  font-size: 28px;
+                  font-weight: 600;
+                }
+                .header p {
+                  margin: 5px 0 0 0;
+                  font-size: 14px;
+                  opacity: 0.9;
+                }
+                .content {
+                  padding: 30px;
+                }
+                .field {
+                  margin-bottom: 24px;
+                }
+                .label {
+                  font-weight: 600;
+                  color: #1a5f3b;
+                  font-size: 13px;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                  margin-bottom: 6px;
+                }
+                .value {
+                  color: #333333;
+                  font-size: 15px;
+                  line-height: 1.6;
+                  word-wrap: break-word;
+                }
+                .message-box {
+                  background-color: #f9f9f9;
+                  border-left: 4px solid #FFD700;
+                  padding: 16px;
+                  margin-top: 6px;
+                  border-radius: 4px;
+                }
+                .divider {
+                  height: 1px;
+                  background-color: #e0e0e0;
+                  margin: 24px 0;
+                }
+                .footer {
+                  background-color: #f5f5f5;
+                  padding: 20px;
+                  text-align: center;
+                  font-size: 12px;
+                  color: #666666;
+                  border-top: 1px solid #e0e0e0;
+                }
+                .footer a {
+                  color: #1a5f3b;
+                  text-decoration: none;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>New Message from Your Website</h1>
+                  <p>Someone wants to get in touch</p>
+                </div>
+
+                <div class="content">
+                  <div class="field">
+                    <div class="label">Name</div>
+                    <div class="value">${body.name}</div>
+                  </div>
+
+                  <div class="field">
+                    <div class="label">Email</div>
+                    <div class="value"><a href="mailto:${body.email}" style="color: #1a5f3b; text-decoration: none;">${body.email}</a></div>
+                  </div>
+
+                  ${body.phone ? `
+                  <div class="field">
+                    <div class="label">Phone</div>
+                    <div class="value"><a href="tel:${body.phone}" style="color: #1a5f3b; text-decoration: none;">${body.phone}</a></div>
+                  </div>
+                  ` : ''}
+
+                  <div class="divider"></div>
+
+                  <div class="field">
+                    <div class="label">Message</div>
+                    <div class="message-box">
+                      <div class="value">${body.message.replace(/\n/g, '<br>')}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="footer">
+                  <p>This message was sent from your website contact form.</p>
+                  <p>Reply directly to this email to respond to the sender.</p>
+                </div>
+              </div>
+            </body>
+          </html>
         `,
       });
 
