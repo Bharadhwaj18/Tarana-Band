@@ -36,7 +36,9 @@ export default function AdminSettingsPage() {
   const [displayFont, setDisplayFont] = useState('Righteous');
   const [bodyFont, setBodyFont] = useState('Poppins');
 
-  // Social links
+  // Colors
+  const [primaryColor, setPrimaryColor] = useState('#000000');
+  const [secondaryColor, setSecondaryColor] = useState('#FFD700');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [newSocialPlatform, setNewSocialPlatform] = useState('');
   const [newSocialUrl, setNewSocialUrl] = useState('');
@@ -97,7 +99,10 @@ export default function AdminSettingsPage() {
               setDisplayFont(content.display_font || 'Righteous');
               setBodyFont(content.body_font || 'Poppins');
               break;
-            case 'social':
+            case 'colors':
+              setPrimaryColor(content.primary_color || '#000000');
+              setSecondaryColor(content.secondary_color || '#FFD700');
+              break;
               setSocialLinks(content.social_links || []);
               break;
           }
@@ -231,6 +236,13 @@ export default function AdminSettingsPage() {
           content: {
             display_font: displayFont,
             body_font: bodyFont,
+          },
+        },
+        {
+          section_name: 'colors',
+          content: {
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
           },
         },
         {
@@ -465,6 +477,61 @@ export default function AdminSettingsPage() {
                 >
                   Preview: Lorem ipsum dolor sit
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Colors Section */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-2xl font-bold text-gold mb-6">Brand Colors</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-300 font-semibold mb-2">Primary Color</label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-16 h-16 rounded-lg cursor-pointer border-2 border-gray-600"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 focus:border-gold focus:outline-none font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Used for text, borders</p>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-gray-700 rounded" style={{ color: primaryColor }}>
+                  <p className="font-semibold">Sample Text Color</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-300 font-semibold mb-2">Secondary Color (Accent)</label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="color"
+                    value={secondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    className="w-16 h-16 rounded-lg cursor-pointer border-2 border-gray-600"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 focus:border-gold focus:outline-none font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Used for buttons, highlights</p>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 rounded text-black font-semibold" style={{ backgroundColor: secondaryColor }}>
+                  Sample Button
+                </div>
               </div>
             </div>
           </div>

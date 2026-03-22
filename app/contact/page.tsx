@@ -167,7 +167,7 @@ export default function ContactPage() {
             {/* Phone Field */}
             <div>
               <label htmlFor="phone" className="block text-sm font-semibold text-gray-300 mb-2">
-                Phone Number <span className="text-gray-500">(Optional)</span>
+                Phone Number 
               </label>
               <input
                 type="tel"

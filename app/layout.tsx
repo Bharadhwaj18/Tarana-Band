@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import FaviconSetter from "@/components/FaviconSetter";
+import FontSetter from "@/components/FontSetter";
+import ColorSetter from "@/components/ColorSetter";
 
 export const metadata: Metadata = {
   title: "Tarana",
@@ -25,7 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Righteous&family=Poppins:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Righteous&family=Bebas+Neue&family=Oswald&family=Playfair+Display&family=Montserrat&family=Raleway&family=Poppins:wght@400;500;600;700&family=Inter&family=Roboto&family=Lato&display=swap"
           rel="stylesheet"
         />
         {/* Favicon with cache busting */}
@@ -34,6 +36,8 @@ export default function RootLayout({
       </head>
       <body className="font-body">
         <FaviconSetter />
+        <FontSetter />
+        <ColorSetter />
         {/* Google Analytics */}
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>
