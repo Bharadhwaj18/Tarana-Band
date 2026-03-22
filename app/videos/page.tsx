@@ -12,7 +12,7 @@ interface Video {
   description: string;
   video_file_url: string;
   thumbnail_url: string | null;
-  video_type: 'self_hosted' | 'youtube' | 'vimeo';
+  video_type: 'self_hosted' | 'youtube' | 'vimeo' | 'drive';
   is_featured: boolean;
   order_position: number;
 }
@@ -64,12 +64,26 @@ export default function VideosPage() {
           ? new URL(video.video_file_url).searchParams.get('v')
           : video.video_file_url;
         if (!videoId) throw new Error('Invalid YouTube URL');
-        return `https://www.youtube.com/embed/${videoId}`;
+        return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
       }
       if (video.video_type === 'vimeo') {
         const videoId = video.video_file_url.split('/').pop();
         if (!videoId) throw new Error('Invalid Vimeo URL');
-        return `https://player.vimeo.com/video/${videoId}`;
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1`;
+      }
+      if (video.video_type === 'drive') {
+        let driveFileId = '';
+        // Extract file ID from various Google Drive URL formats
+        if (video.video_file_url.includes('drive.google.com/file/d/')) {
+          driveFileId = video.video_file_url.split('/d/')[1].split('/')[0];
+        } else if (video.video_file_url.includes('?id=')) {
+          driveFileId = new URL(video.video_file_url).searchParams.get('id') || '';
+        } else {
+          // Assume it's just the file ID
+          driveFileId = video.video_file_url;
+        }
+        if (!driveFileId) throw new Error('Invalid Google Drive URL');
+        return `https://drive.google.com/file/d/${driveFileId}/preview`;
       }
       return video.video_file_url;
     } catch (error) {
@@ -123,6 +137,7 @@ export default function VideosPage() {
                     <video
                       src={selectedVideo.video_file_url}
                       controls
+                      autoPlay
                       className="w-full h-full"
                       onError={(e) => console.error('Video playback error:', e)}
                     />
@@ -142,6 +157,7 @@ export default function VideosPage() {
                           title={selectedVideo.title}
                           className="w-full h-full"
                           frameBorder="0"
+                          autoPlay
                           allowFullScreen
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         />

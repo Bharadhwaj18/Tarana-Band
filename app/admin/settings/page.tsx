@@ -105,6 +105,7 @@ export default function AdminSettingsPage() {
               setSecondaryColor(content.secondary_color || '#FFD700');
               setAccentColor(content.accent_color || '#1a5f3b');
               break;
+            case 'social':
               setSocialLinks(content.social_links || []);
               break;
           }
