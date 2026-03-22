@@ -55,8 +55,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [upcomingToursSoon, setUpcomingToursSoon] = useState<any>(null);
-  const [showNotification, setShowNotification] = useState(true);
+  const [showNotification, setShowNotification] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [hasSeenNotification, setHasSeenNotification] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -123,6 +124,13 @@ export default function Home() {
         });
         if (upcomingTour) {
           setUpcomingToursSoon(upcomingTour);
+          // Check if user has already seen this notification in this session
+          const hasSeenNotif = sessionStorage.getItem('tour-notification-seen');
+          if (!hasSeenNotif) {
+            setShowNotification(true);
+            setHasSeenNotification(true);
+            sessionStorage.setItem('tour-notification-seen', 'true');
+          }
         }
       }
 
@@ -167,7 +175,7 @@ export default function Home() {
 
   // Hide notification after 10 seconds with slide-out animation
   useEffect(() => {
-    if (upcomingToursSoon && showNotification && !isClosing) {
+    if (upcomingToursSoon && showNotification && !isClosing && hasSeenNotification) {
       const hideTimer = setTimeout(() => {
         setIsClosing(true);
         // After animation completes (0.5s), hide the notification
@@ -179,7 +187,7 @@ export default function Home() {
 
       return () => clearTimeout(hideTimer);
     }
-  }, [upcomingToursSoon, showNotification, isClosing]);
+  }, [upcomingToursSoon, showNotification, isClosing, hasSeenNotification]);
 
   // Carousel navigation functions
   const nextSlide = () => {
@@ -255,16 +263,16 @@ export default function Home() {
 
       {/* Upcoming Tours Banner - Floating Notification */}
       {upcomingToursSoon && showNotification && (
-        <div className={`fixed top-24 right-8 z-50 ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
-          <div className="bg-white rounded-lg shadow-2xl overflow-hidden w-full max-w-2xl hover:shadow-3xl transition-shadow border-l-4 border-red-600">
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-start gap-3 flex-1">
+        <div className={`fixed top-24 right-4 md:right-8 z-40 ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}>
+          <div className="bg-white rounded-lg shadow-2xl overflow-hidden w-full max-w-sm md:max-w-2xl hover:shadow-3xl transition-shadow border-l-4 border-red-600">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
                 <span className="inline-block w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse mt-1.5 flex-shrink-0"></span>
-                <div>
-                  <h3 className="text-black font-bold text-lg">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-black font-bold text-sm md:text-lg truncate">
                     {upcomingToursSoon.venue_name}
                   </h3>
-                  <p className="text-gray-500 text-sm mt-0.5">
+                  <p className="text-gray-500 text-xs md:text-sm mt-0.5 truncate">
                     {new Date(upcomingToursSoon.date).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric'
@@ -276,9 +284,9 @@ export default function Home() {
                 href={upcomingToursSoon.ticket_link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition-all flex-shrink-0 ml-4"
+                className="px-4 md:px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs md:text-sm rounded-lg transition-all flex-shrink-0"
               >
-                Get Tickets
+                Tickets
               </a>
             </div>
           </div>
@@ -407,21 +415,11 @@ export default function Home() {
                       <img
                         src={photo.image_url}
                         alt={photo.title || 'TARANA Live'}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
 
                       {/* Gradient Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-
-                      {/* Content Overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 p-8 sm:p-16">
-                        <div className="max-w-4xl mx-auto text-center">
-                          <h3 className="text-3xl sm:text-5xl font-bold text-white mb-4">
-                            {photo.title || 'TARANA Live'}
-                          </h3>
-                          <div className="w-24 h-1 bg-gold mx-auto"></div>
-                        </div>
-                      </div>
 
                       {/* Photo Counter */}
                       <div className="absolute top-8 right-8 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">

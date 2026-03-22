@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
 interface SocialLink {
@@ -17,6 +18,7 @@ interface NavigationConfig {
 }
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const [logoBlack, setLogoBlack] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -80,6 +82,13 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-gray-400">
+              {pathname !== '/' && (
+                <li>
+                  <a href="/" className="hover:text-white transition">
+                    Home
+                  </a>
+                </li>
+              )}
               {(navConfig.show_about !== false) && (
                 <li>
                   <a href="/about" className="hover:text-white transition">
