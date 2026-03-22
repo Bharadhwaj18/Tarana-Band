@@ -98,7 +98,7 @@ export default function VideosPage() {
       {/* Hero Section */}
       <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
-          <h1 className="heading-display mb-4 text-red-600">VIDEOS</h1>
+          <h1 className="heading-display mb-4" style={{ color: 'var(--secondary)' }}>VIDEOS</h1>
           <p className="text-lg sm:text-xl text-gray-300">
             Watch Tarana's latest performances, music videos, and behind-the-scenes content.
           </p>
@@ -141,9 +141,9 @@ export default function VideosPage() {
                           src={embedUrl}
                           title={selectedVideo.title}
                           className="w-full h-full"
+                          frameBorder="0"
                           allowFullScreen
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          onError={(e) => console.error('Iframe error:', e)}
                         />
                       );
                     })()
@@ -182,9 +182,10 @@ export default function VideosPage() {
                           }}
                           className={`group rounded-lg overflow-hidden text-left transition-all bg-white ${
                             selectedVideo?.id === video.id
-                              ? 'ring-2 ring-red-600'
+                              ? 'ring-2'
                               : 'hover:shadow-lg'
                           }`}
+                          style={selectedVideo?.id === video.id ? { borderColor: 'var(--accent)', boxShadow: `0 0 0 2px var(--accent)` } : undefined}
                         >
                           <div className="aspect-video bg-gray-200 relative overflow-hidden">
                             {(() => {
@@ -228,7 +229,7 @@ export default function VideosPage() {
                             </div>
                           </div>
                           <div className="p-4 bg-white">
-                            <h4 className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
+                            <h4 className="font-semibold text-gray-900 transition-colors group-hover-secondary">
                               {video.title}
                             </h4>
                           </div>

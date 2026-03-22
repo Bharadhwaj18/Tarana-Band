@@ -39,6 +39,7 @@ export default function AdminSettingsPage() {
   // Colors
   const [primaryColor, setPrimaryColor] = useState('#000000');
   const [secondaryColor, setSecondaryColor] = useState('#FFD700');
+  const [accentColor, setAccentColor] = useState('#1a5f3b');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [newSocialPlatform, setNewSocialPlatform] = useState('');
   const [newSocialUrl, setNewSocialUrl] = useState('');
@@ -102,6 +103,7 @@ export default function AdminSettingsPage() {
             case 'colors':
               setPrimaryColor(content.primary_color || '#000000');
               setSecondaryColor(content.secondary_color || '#FFD700');
+              setAccentColor(content.accent_color || '#1a5f3b');
               break;
               setSocialLinks(content.social_links || []);
               break;
@@ -243,6 +245,7 @@ export default function AdminSettingsPage() {
           content: {
             primary_color: primaryColor,
             secondary_color: secondaryColor,
+            accent_color: accentColor,
           },
         },
         {
@@ -531,6 +534,30 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="mt-3 p-3 rounded text-black font-semibold" style={{ backgroundColor: secondaryColor }}>
                   Sample Button
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-300 font-semibold mb-2">Accent Color (for cards/white backgrounds)</label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="w-16 h-16 rounded-lg cursor-pointer border-2 border-gray-600"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="w-full p-2 bg-gray-700 text-white rounded border border-gray-600 focus:border-gold focus:outline-none font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Used for card accents, borders on white</p>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 rounded border-l-4 text-black font-semibold bg-white" style={{ borderLeftColor: accentColor }}>
+                  Sample Card
                 </div>
               </div>
             </div>

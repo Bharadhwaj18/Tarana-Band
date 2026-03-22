@@ -26,6 +26,7 @@ export default function ColorSetter() {
           const colorConfig = data[0].content;
           const primaryColor = colorConfig.primary_color || '#000000';
           const secondaryColor = colorConfig.secondary_color || '#FFD700';
+          const accentColor = colorConfig.accent_color || '#1a5f3b';
 
           // Apply colors via CSS variables
           const style = document.createElement('style');
@@ -33,6 +34,7 @@ export default function ColorSetter() {
             :root {
               --primary: ${primaryColor};
               --secondary: ${secondaryColor};
+              --accent: ${accentColor};
               --gold: ${secondaryColor};
               --gold-light: ${secondaryColor}CC;
               --gold-dark: ${secondaryColor}99;

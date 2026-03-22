@@ -71,7 +71,7 @@ export default async function ToursPage() {
       {/* Hero Section */}
       <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
-          <h1 className="heading-display mb-4 text-red-600">TOUR DATES</h1>
+          <h1 className="heading-display mb-4" style={{ color: 'var(--secondary)' }}>TOUR DATES</h1>
           <p className="text-lg sm:text-xl text-gray-300">
             Catch Tarana live on stage. See dates and grab your tickets now.
           </p>
@@ -88,11 +88,12 @@ export default async function ToursPage() {
               {upcoming.map((tour) => (
                 <div
                   key={tour.id}
-                  className="border-l-4 border-red-600 bg-white p-6 rounded-lg hover:shadow-lg transition-shadow"
+                  className="border-l-4 bg-white p-6 rounded-lg hover:shadow-lg transition-shadow"
+                  style={{ borderLeftColor: 'var(--accent)' }}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <p className="text-red-600 font-bold text-lg">
+                      <p className="font-bold text-lg" style={{ color: 'var(--accent)' }}>
                         {formatDate(tour.date)}
                       </p>
                       <h3 className="heading-md mt-2">{tour.venue_name}</h3>

@@ -98,3 +98,8 @@ body {
 .animate-slide-out {
   animation: slideOut 0.5s ease-in forwards;
 }
+
+/* Secondary color hover states */
+.group:hover .group-hover-secondary {
+  color: var(--accent);
+}
