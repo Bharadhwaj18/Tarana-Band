@@ -132,7 +132,7 @@ export default function Footer() {
                 </li>
               )}
               <li>
-                <a href="mailto:info@tarana.band" className="hover:text-white transition">
+                <a href="mailto:taranabandinfo@gmail.com" className="hover:text-white transition">
                   Email
                 </a>
               </li>
