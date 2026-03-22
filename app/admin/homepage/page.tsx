@@ -614,12 +614,9 @@ export default function AdminHomepagePage() {
                           />
                         </div>
                         <div className="p-3 space-y-2">
-                          <p className="text-white text-sm font-semibold">
-                            {index + 1}. {photo.title || 'Untitled'}
-                          </p>
                           <div>
                             <label className="block text-xs text-gray-400 mb-1">
-                              Subtitle (displayed on carousel)
+                              Photo {index + 1} - Subtitle
                             </label>
                             <input
                               type="text"
@@ -630,7 +627,7 @@ export default function AdminHomepagePage() {
                                 );
                                 setFeaturedPhotos(updated);
                               }}
-                              placeholder="Add a subtitle..."
+                              placeholder="Add a subtitle for this carousel image..."
                               className="w-full px-2 py-1 bg-gray-600 text-white text-xs rounded border border-gray-500 focus:border-gold focus:outline-none"
                             />
                           </div>
@@ -638,7 +635,7 @@ export default function AdminHomepagePage() {
                             onClick={() => removeFromFeatured(photo.id)}
                             className="w-full px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
                           >
-                            Remove
+                            Remove from Carousel
                           </button>
                         </div>
                       </div>

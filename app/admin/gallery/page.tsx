@@ -147,26 +147,6 @@ export default function AdminGalleryPage() {
     }
   };
 
-  const handleUpdateTitle = async (photo: GalleryPhoto, newTitle: string) => {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return;
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
-
-    const { error } = await supabase
-      .from('gallery_photos')
-      .update({ title: newTitle })
-      .eq('id', photo.id);
-
-    if (!error) {
-      fetchPhotos();
-    }
-  };
-
   if (loading) {
     return (
       <AdminLayout>
@@ -254,18 +234,11 @@ export default function AdminGalleryPage() {
                 />
               </div>
               <div className="p-4">
-                <input
-                  type="text"
-                  value={photo.title || ''}
-                  onChange={(e) => handleUpdateTitle(photo, e.target.value)}
-                  placeholder="Photo title"
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded-lg mb-3 border border-gray-600 focus:border-gold focus:outline-none"
-                />
                 <button
                   onClick={() => handleDelete(photo)}
                   className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-semibold"
                 >
-                  Delete
+                  Delete Photo
                 </button>
               </div>
             </div>
