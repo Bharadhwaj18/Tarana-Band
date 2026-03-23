@@ -9,6 +9,8 @@ import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils
 interface VideoCategory {
   id: string;
   name: string;
+  order_position?: number;
+  show_more_link?: string;
 }
 
 interface Video {
@@ -29,8 +31,11 @@ export default function AdminVideosPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryLink, setEditingCategoryLink] = useState('');
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailStoragePath, setThumbnailStoragePath] = useState('');
+  const [draggedCategory, setDraggedCategory] = useState<VideoCategory | null>(null);
   const [formData, setFormData] = useState<Partial<Video & { thumbnail_storage_path: string }>>({
     title: '',
     description: '',
@@ -67,7 +72,7 @@ export default function AdminVideosPage() {
     if (!supabase) return;
 
     try {
-      const { data } = await supabase.from('video_categories').select('*').order('name');
+      const { data } = await supabase.from('video_categories').select('*').order('order_position', { ascending: true });
       setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -81,7 +86,7 @@ export default function AdminVideosPage() {
     }
 
     try {
-      await supabase.from('video_categories').insert([{ name: newCategoryName }]);
+      await supabase.from('video_categories').insert([{ name: newCategoryName, order_position: categories.length }]);
       setNewCategoryName('');
       fetchCategories();
     } catch (error) {
@@ -100,6 +105,62 @@ export default function AdminVideosPage() {
     } catch (error) {
       console.error('Error deleting category:', error);
       alert('Error deleting category');
+    }
+  };
+
+  const updateCategoryLink = async (categoryId: string, link: string) => {
+    try {
+      await supabase.from('video_categories').update({ show_more_link: link }).eq('id', categoryId);
+      fetchCategories();
+      setEditingCategoryId(null);
+      setEditingCategoryLink('');
+    } catch (error) {
+      console.error('Error updating category link:', error);
+      alert('Error updating category link');
+    }
+  };
+
+  const handleCategoryDragStart = (cat: VideoCategory) => {
+    setDraggedCategory(cat);
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleCategoryDrop = async (e: React.DragEvent, dropOnCat: VideoCategory) => {
+    e.preventDefault();
+    if (!draggedCategory || draggedCategory.id === dropOnCat.id) {
+      setDraggedCategory(null);
+      return;
+    }
+
+    try {
+      const draggedIndex = categories.findIndex(c => c.id === draggedCategory.id);
+      const dropIndex = categories.findIndex(c => c.id === dropOnCat.id);
+
+      if (draggedIndex === -1 || dropIndex === -1) return;
+
+      const updatedCategories = [...categories];
+      const [draggedItem] = updatedCategories.splice(draggedIndex, 1);
+      updatedCategories.splice(dropIndex, 0, draggedItem);
+
+      // Update order positions in database
+      const updates = updatedCategories.map((cat, index) => ({
+        id: cat.id,
+        order_position: index,
+      }));
+
+      for (const update of updates) {
+        await supabase.from('video_categories').update({ order_position: update.order_position }).eq('id', update.id);
+      }
+
+      setCategories(updatedCategories);
+    } catch (error) {
+      console.error('Error reordering categories:', error);
+      alert('Error reordering categories');
+    } finally {
+      setDraggedCategory(null);
     }
   };
 
@@ -131,11 +192,11 @@ export default function AdminVideosPage() {
   };
 
   const removeThumbnail = async () => {
-    if (!thumbnailStoragePath) return;
-
     try {
-      // Delete from storage
-      await deleteImageFromSupabase(supabase, thumbnailStoragePath);
+      // Delete from storage if we have a path
+      if (thumbnailStoragePath) {
+        await deleteImageFromSupabase(supabase, thumbnailStoragePath);
+      }
 
       // Clear from form
       setFormData((prev) => ({
@@ -188,7 +249,7 @@ export default function AdminVideosPage() {
     }
 
     try {
-      // Prepare data without thumbnail_storage_path (it's not a database column)
+      // Prepare data for submission
       const submitData = {
         title: formData.title,
         description: formData.description,
@@ -198,6 +259,7 @@ export default function AdminVideosPage() {
         order_position: formData.order_position,
         category_id: formData.category_id,
         thumbnail_url: formData.thumbnail_url,
+        thumbnail_storage_path: thumbnailStoragePath,
       };
 
       if (editingId) {
@@ -260,18 +322,77 @@ export default function AdminVideosPage() {
           </div>
 
           {categories.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {categories.map((cat) => (
-                <div key={cat.id} className="flex items-center justify-between bg-gray-700 px-4 py-2 rounded-lg">
-                  <span className="text-white">{cat.name}</span>
-                  <button
-                    onClick={() => deleteCategory(cat.id, cat.name)}
-                    className="text-red-400 hover:text-red-300 font-semibold text-sm"
+            <div className="space-y-4">
+              <p className="text-sm text-gray-400 mb-3">Drag and drop to reorder categories. Click edit to set show more link.</p>
+              <div className="grid grid-cols-1 gap-3">
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    draggable
+                    onDragStart={() => handleCategoryDragStart(cat)}
+                    onDragOver={handleCategoryDragOver}
+                    onDrop={(e) => handleCategoryDrop(e, cat)}
+                    className={`bg-gray-700 px-4 py-3 rounded-lg cursor-move hover:bg-gray-600 transition-colors ${
+                      draggedCategory?.id === cat.id ? 'opacity-50' : ''
+                    }`}
                   >
-                    Delete
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-medium">{cat.name}</span>
+                      <button
+                        onClick={() => deleteCategory(cat.id, cat.name)}
+                        className="text-red-400 hover:text-red-300 font-semibold text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    {editingCategoryId === cat.id ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editingCategoryLink}
+                          onChange={(e) => setEditingCategoryLink(e.target.value)}
+                          placeholder="https://example.com/videos"
+                          className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 text-white rounded text-sm focus:border-gold focus:outline-none"
+                        />
+                        <button
+                          onClick={() => updateCategoryLink(cat.id, editingCategoryLink)}
+                          className="bg-gold hover:bg-gold-light text-black font-semibold px-3 py-2 rounded text-sm"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingCategoryId(null)}
+                          className="bg-gray-600 hover:bg-gray-500 text-white font-semibold px-3 py-2 rounded text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-sm">
+                          {cat.show_more_link ? (
+                            <>
+                              Link: <span className="text-gold truncate">{cat.show_more_link}</span>
+                            </>
+                          ) : (
+                            <span className="text-gray-500">No show more link set</span>
+                          )}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditingCategoryId(cat.id);
+                            setEditingCategoryLink(cat.show_more_link || '');
+                          }}
+                          className="text-blue-400 hover:text-blue-300 font-semibold text-sm ml-2"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <p className="text-gray-400">No categories yet. Create one to add videos.</p>

@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import VideoModal from '@/components/VideoModal';
 import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface VideoCategory {
   id: string;
   name: string;
+  order_position?: number;
+  show_more_link?: string;
 }
 
 interface Video {
@@ -27,8 +30,9 @@ export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [categories, setCategories] = useState<VideoCategory[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<VideoCategory | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<{ [categoryId: string]: number }>({});
+  const videosPerPage = 6;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,21 +42,17 @@ export default function VideosPage() {
       }
 
       try {
-        // Fetch categories
+        // Fetch categories ordered by position
         const { data: categoriesData, error: categoriesError } = await supabase
           .from('video_categories')
           .select('*')
-          .order('name', { ascending: true });
+          .order('order_position', { ascending: true });
 
         if (categoriesError) {
           console.error('Error fetching categories:', categoriesError);
           setCategories([]);
         } else {
           setCategories(categoriesData || []);
-          // Set first category as default
-          if (categoriesData && categoriesData.length > 0) {
-            setSelectedCategory(categoriesData[0]);
-          }
         }
 
         // Fetch videos
@@ -87,12 +87,12 @@ export default function VideosPage() {
           ? new URL(video.video_file_url).searchParams.get('v')
           : video.video_file_url;
         if (!videoId) throw new Error('Invalid YouTube URL');
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
       }
       if (video.video_type === 'vimeo') {
         const videoId = video.video_file_url.split('/').pop();
         if (!videoId) throw new Error('Invalid Vimeo URL');
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1`;
+        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1`;
       }
       if (video.video_type === 'drive') {
         let driveFileId = '';
@@ -106,7 +106,7 @@ export default function VideosPage() {
           driveFileId = video.video_file_url;
         }
         if (!driveFileId) throw new Error('Invalid Google Drive URL');
-        return `https://drive.google.com/file/d/${driveFileId}/preview`;
+        return `https://drive.google.com/file/d/${driveFileId}/preview?usp=drivesdk`;
       }
       return video.video_file_url;
     } catch (error) {
@@ -142,7 +142,7 @@ export default function VideosPage() {
         </div>
       </section>
 
-      {/* Videos Section */}
+      {/* Videos Section - Netflix Style */}
       {loading ? (
         <section className="py-10 sm:py-12 bg-black">
           <div className="container-custom text-center">
@@ -158,170 +158,141 @@ export default function VideosPage() {
           </div>
         </section>
       ) : (
-        <>
-          {/* Category Filter */}
-          <section className="py-8 bg-black border-b border-gray-800">
-            <div className="container-custom">
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setSelectedVideo(null);
-                    }}
-                    className={`px-6 py-2 rounded-lg font-semibold whitespace-nowrap transition-all ${
-                      selectedCategory?.id === cat.id
-                        ? 'bg-white text-black'
-                        : 'bg-gray-800 text-white hover:bg-gray-700'
-                    }`}
-                    style={selectedCategory?.id === cat.id ? { backgroundColor: 'var(--secondary)', color: 'var(--primary)' } : {}}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
+        <section className="py-10 sm:py-12 bg-black space-y-12">
+          {categories.map((category) => {
+            const categoryVideos = videos.filter(v => v.category_id === category.id);
+            if (categoryVideos.length === 0) return null;
 
-          {selectedCategory && (() => {
-            const categoryVideos = videos.filter(v => v.category_id === selectedCategory.id);
-            const featuredVideo = categoryVideos.find(v => v.is_featured) || categoryVideos[0];
-            const allVideos = categoryVideos.filter(v => v.id !== featuredVideo?.id);
+            const page = currentPage[category.id] || 0;
+            const startIndex = page * videosPerPage;
+            const endIndex = startIndex + videosPerPage;
+            const visibleVideos = categoryVideos.slice(startIndex, endIndex);
+            const totalPages = Math.ceil(categoryVideos.length / videosPerPage);
+            const hasNextPage = page < totalPages - 1;
+            const hasPrevPage = page > 0;
 
             return (
-              <>
-                {/* Featured Video */}
-                {featuredVideo ? (
-                  <section className="py-12 bg-black text-white">
-                    <div className="container-custom">
-                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden mb-6">
-                        {featuredVideo.video_type === 'self_hosted' ? (
-                          <video
-                            src={featuredVideo.video_file_url}
-                            controls
-                            autoPlay
-                            className="w-full h-full"
-                            onError={(e) => console.error('Video playback error:', e)}
-                          />
-                        ) : (
-                          (() => {
-                            const embedUrl = getVideoEmbedUrl(featuredVideo);
-                            if (!embedUrl) {
+              <div key={category.id} className="container-custom">
+                {/* Category Title with Arrows and Show More */}
+                <div className="flex items-center gap-4 mb-6 justify-between">
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white">{category.name}</h2>
+
+                    {/* Navigation Arrows */}
+                    <div className="flex gap-2">
+                      {hasPrevPage && (
+                        <button
+                          onClick={() => setCurrentPage(prev => ({ ...prev, [category.id]: prev[category.id] - 1 }))}
+                          className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+                          aria-label="Previous videos"
+                        >
+                          <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {hasNextPage && (
+                        <button
+                          onClick={() => setCurrentPage(prev => ({ ...prev, [category.id]: prev[category.id] + 1 }))}
+                          className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+                          aria-label="Next videos"
+                        >
+                          <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Show More Link */}
+                  {category.show_more_link && (
+                    <a
+                      href={category.show_more_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-gold hover:bg-gold-light text-black font-semibold text-sm rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+                    >
+                      <span>Show All</span>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 10l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+
+                {/* Videos Container */}
+                <div className="mb-6">
+                  <div className="flex gap-4 overflow-hidden">
+                    {visibleVideos.map((video) => (
+                      <button
+                        key={video.id}
+                        onClick={() => setSelectedVideo(video)}
+                        className="flex-shrink-0 group cursor-pointer transition-transform hover:scale-105"
+                        style={{ width: '280px' }}
+                      >
+                        <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden relative">
+                          {(() => {
+                            const thumbnailUrl = video.thumbnail_url || getYouTubeThumbnail(video);
+                            if (thumbnailUrl) {
                               return (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                                  <p className="text-red-400">Error loading video. Invalid URL.</p>
-                                </div>
+                                <img
+                                  src={thumbnailUrl}
+                                  alt={video.title}
+                                  className="w-full h-full object-cover group-hover:brightness-75 transition-all"
+                                  onError={(e) => {
+                                    console.error('Image load error:', video.title);
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
                               );
                             }
                             return (
-                              <iframe
-                                src={embedUrl}
-                                title={featuredVideo.title}
-                                className="w-full h-full"
-                                frameBorder="0"
-                                allowFullScreen
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              />
+                              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-700">
+                                <svg
+                                  className="w-12 h-12 text-gray-500"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                                </svg>
+                              </div>
                             );
-                          })()
-                        )}
-                      </div>
-                      <h2 className="heading-lg mb-4">{featuredVideo.title}</h2>
-                      <p className="text-gray-300">{featuredVideo.description}</p>
-                    </div>
-                  </section>
-                ) : null}
-
-                {/* Video Grid */}
-                <section className="py-10 sm:py-12 bg-black">
-                  <div className="container-custom">
-                    <h3 className="heading-md mb-12 text-white">All Videos</h3>
-                    {(() => {
-                      console.log('=== VIDEO DEBUG ===');
-                      console.log('Total videos:', videos.length);
-                      console.log('Category videos:', categoryVideos.length);
-                      console.log('All videos (excluding featured):', allVideos.length);
-                      return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {allVideos.length > 0 ? (
-                            allVideos.map((video) => (
-                              <button
-                                key={video.id}
-                                onClick={() => {
-                                  console.log('Clicked video:', video);
-                                  setSelectedVideo(video);
-                                }}
-                                className={`group rounded-lg overflow-hidden text-left transition-all bg-white ${
-                                  selectedVideo?.id === video.id
-                                    ? 'ring-2'
-                                    : 'hover:shadow-lg'
-                                }`}
-                                style={selectedVideo?.id === video.id ? { borderColor: 'var(--accent)', boxShadow: `0 0 0 2px var(--accent)` } : undefined}
-                              >
-                                <div className="aspect-video bg-gray-200 relative overflow-hidden">
-                                  {(() => {
-                                    const thumbnailUrl = video.thumbnail_url || getYouTubeThumbnail(video);
-                                    if (thumbnailUrl) {
-                                      return (
-                                        <>
-                                          <img
-                                            src={thumbnailUrl}
-                                            alt={video.title}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                            onError={(e) => {
-                                              console.error('Image load error for:', video.title, thumbnailUrl);
-                                              (e.target as HTMLImageElement).style.display = 'none';
-                                            }}
-                                          />
-                                        </>
-                                      );
-                                    }
-                                    return (
-                                      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-300">
-                                        <svg
-                                          className="w-16 h-16 text-gray-600"
-                                          fill="currentColor"
-                                          viewBox="0 0 20 20"
-                                        >
-                                          <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                                        </svg>
-                                        <p className="text-xs text-gray-600 mt-2">{video.video_type}</p>
-                                      </div>
-                                    );
-                                  })()}
-                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">
-                                    <svg
-                                      className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                    </svg>
-                                  </div>
-                                </div>
-                                <div className="p-4 bg-white">
-                                  <h4 className="font-semibold text-gray-900 transition-colors group-hover-secondary">
-                                    {video.title}
-                                  </h4>
-                                </div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="col-span-full text-center py-8">
-                              <p className="text-gray-400">No additional videos in this category</p>
-                            </div>
-                          )}
+                          })()}
+                          {/* Play button overlay */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all">
+                            <svg
+                              className="w-16 h-16 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
+                          </div>
                         </div>
-                      );
-                    })()}
+                        <div className="mt-3">
+                          <h3 className="text-white font-semibold text-sm line-clamp-1 group-hover:text-gray-300 truncate" title={video.title}>
+                            {video.title}
+                          </h3>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </section>
-              </>
+                </div>
+              </div>
             );
-          })()}
-        </>
+          })}
+        </section>
       )}
+
+      {/* Video Modal */}
+      <VideoModal
+        video={selectedVideo}
+        isOpen={!!selectedVideo}
+        onClose={() => setSelectedVideo(null)}
+        getVideoEmbedUrl={getVideoEmbedUrl}
+      />
 
       <Footer />
     </main>
