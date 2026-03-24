@@ -221,23 +221,24 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-12 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
-        <div className="container-custom text-center">
-          <h2 className="text-4xl md:text-5xl font-display font-bold text-black mb-6">
-            Experience TARANA Live
-          </h2>
-          <p className="text-xl text-black/80 mb-8 max-w-2xl mx-auto">
-            Don't miss our next show. Pure energy, unforgettable nights.
-          </p>
-          <a
-            href="/tours"
-            className="inline-block px-12 py-4 bg-black hover:bg-gray-900 text-gold font-bold text-xl rounded-full transform hover:scale-105 transition-all shadow-2xl"
-          >
-            See Tour Dates
-          </a>
-        </div>
-      </section>
+      {navConfig.show_tours && (
+        <section className="py-12 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
+          <div className="container-custom text-center">
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-black mb-6">
+              Experience TARANA Live
+            </h2>
+            <p className="text-xl text-black/80 mb-8 max-w-2xl mx-auto">
+              Don't miss our next show. Pure energy, unforgettable nights.
+            </p>
+            <a
+              href="/tours"
+              className="inline-block px-12 py-4 bg-black hover:bg-gray-900 text-gold font-bold text-xl rounded-full transform hover:scale-105 transition-all shadow-2xl"
+            >
+              See Tour Dates
+            </a>
+          </div>
+        </section>
+      )}
 
       <Footer />
     </main>
