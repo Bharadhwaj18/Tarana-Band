@@ -40,8 +40,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Sidebar - Desktop */}
-      <div className="fixed left-0 top-0 w-64 h-screen bg-black border-r border-gray-800 overflow-y-auto hidden lg:block z-20">
-        <div className="p-6 border-b border-gray-800">
+      <div className="fixed left-0 top-0 w-64 h-screen bg-black border-r border-gray-800 hidden lg:flex lg:flex-col z-20">
+        <div className="p-6 border-b border-gray-800 shrink-0">
           <p className="text-gray-400 text-sm mb-3">Admin Panel</p>
           <Link
             href="/"
@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </Link>
         </div>
 
-        <nav className="mt-6 space-y-1">
+        <nav className="mt-6 space-y-1 px-0 overflow-y-auto flex-1 pb-6">
           {menuItems.map((item) => (
             <Link
               key={item.href}
@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           ))}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-gray-800 p-6 bg-black">
+        <div className="border-t border-gray-800 p-6 bg-black shrink-0">
           <button
             onClick={handleLogout}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition-colors"
