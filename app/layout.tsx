@@ -3,6 +3,7 @@ import "./globals.css";
 import FaviconSetter from "@/components/FaviconSetter";
 import FontSetter from "@/components/FontSetter";
 import ColorSetter from "@/components/ColorSetter";
+import AppConfigProvider from "@/components/AppConfigProvider";
 
 export const metadata: Metadata = {
   title: "Tarana",
@@ -35,29 +36,31 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
       </head>
       <body className="font-body">
-        <FaviconSetter />
-        <FontSetter />
-        <ColorSetter />
-        {/* Google Analytics */}
-        {process.env.NEXT_PUBLIC_GA_ID && (
-          <>
-            <script
-              async
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
-            />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  gtag('js', new Date());
-                  gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
-                `,
-              }}
-            />
-          </>
-        )}
-        {children}
+        <AppConfigProvider>
+          <FaviconSetter />
+          <FontSetter />
+          <ColorSetter />
+          {/* Google Analytics */}
+          {process.env.NEXT_PUBLIC_GA_ID && (
+            <>
+              <script
+                async
+                src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
+              />
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
+                  `,
+                }}
+              />
+            </>
+          )}
+          {children}
+        </AppConfigProvider>
       </body>
     </html>
   );

@@ -15,8 +15,16 @@ interface Product {
   order_position: number;
 }
 
-export default function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product;
+  onAddToCart?: (product: Product, size: string) => void;
+}
+
+const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL'];
+
+export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedSize, setSelectedSize] = useState('M');
   const descriptionLimit = 150; // Character limit for preview
 
   const shouldShowToggle = product.description.length > descriptionLimit;
@@ -41,14 +49,40 @@ export default function ProductCard({ product }: { product: Product }) {
             {isExpanded ? 'Show less' : 'Show more'}
           </button>
         )}
-        <a
-          href={product.external_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primary block text-center mt-4"
-        >
-          Buy Now
-        </a>
+        {onAddToCart ? (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Size</label>
+              <select
+                value={selectedSize}
+                onChange={(e) => setSelectedSize(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                {SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => onAddToCart(product, selectedSize)}
+              className="btn-primary block w-full text-center"
+            >
+              Add to Cart
+            </button>
+          </div>
+        ) : (
+          <a
+            href={product.external_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary block text-center mt-4"
+          >
+            Buy Now
+          </a>
+        )}
       </div>
     </div>
   );

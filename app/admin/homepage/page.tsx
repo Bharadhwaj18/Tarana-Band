@@ -237,15 +237,20 @@ export default function AdminHomepagePage() {
 
       setMessage('Uploading video to Supabase...');
 
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${file.name.split('.').pop()}`;
-      const filePath = `hero-video/${fileName}`;
+      const fileExt = file.name.split('.').pop() || 'mp4';
+      const filePath = `hero-video/current.${fileExt}`;
+
+      // Keep only one hero video file by deleting the previous file if needed.
+      if (heroVideoStorage && heroVideoStorage !== filePath) {
+        await supabase.storage.from('photos').remove([heroVideoStorage]);
+      }
 
       // Upload to Supabase with proper content type
       const { data, error } = await supabase.storage
         .from('photos')
         .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
+          cacheControl: '31536000',
+          upsert: true,
           contentType: file.type
         });
 
@@ -263,7 +268,8 @@ export default function AdminHomepagePage() {
         throw new Error('Failed to get public URL');
       }
 
-      setHeroBgVideo(urlData.publicUrl);
+      const versionedUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+      setHeroBgVideo(versionedUrl);
       setHeroVideoStorage(filePath);
       setMessage('✓ Video uploaded successfully!');
     } catch (error: any) {

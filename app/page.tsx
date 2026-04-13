@@ -50,6 +50,21 @@ interface HomepageConfig {
   };
 }
 
+function getOptimizedSupabaseImageUrl(url: string, width: number = 1600, quality: number = 70): string {
+  if (!url) return url;
+
+  // Convert Supabase public object URL to transformed render URL.
+  // Example:
+  // /storage/v1/object/public/photos/path.jpg -> /storage/v1/render/image/public/photos/path.jpg?width=1600&quality=70
+  if (!url.includes('/storage/v1/object/public/')) {
+    return url;
+  }
+
+  const renderUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+  const separator = renderUrl.includes('?') ? '&' : '?';
+  return `${renderUrl}${separator}width=${width}&quality=${quality}`;
+}
+
 export default function Home() {
   const [config, setConfig] = useState<HomepageConfig>({});
   const [navConfig, setNavConfig] = useState<NavigationConfig>({});
@@ -90,6 +105,31 @@ export default function Home() {
         homepageData.forEach((item: any) => {
           configData[item.section_name as keyof HomepageConfig] = item.content;
         });
+
+        // Keep featured photo URLs in sync with latest gallery records.
+        // This prevents broken images when gallery files are updated/replaced.
+        const featured = configData.featured_photos?.photos;
+        if (featured && featured.length > 0) {
+          const featuredIds = featured.map((photo) => photo.id);
+          const { data: latestGalleryPhotos } = await supabase
+            .from('gallery_photos')
+            .select('id, image_url')
+            .in('id', featuredIds);
+
+          if (latestGalleryPhotos && latestGalleryPhotos.length > 0) {
+            const urlById = new Map(
+              latestGalleryPhotos.map((photo: { id: string; image_url: string }) => [photo.id, photo.image_url])
+            );
+
+            configData.featured_photos = {
+              photos: featured.map((photo) => ({
+                ...photo,
+                image_url: urlById.get(photo.id) || photo.image_url,
+              })),
+            };
+          }
+        }
+
         setConfig(configData);
       }
 
@@ -157,8 +197,8 @@ export default function Home() {
     background_image: '',
     background_video: '',
     video_storage_path: '',
-    cta_text: 'View Tours',
-    cta_link: '/tours',
+    cta_text: 'About Us',
+    cta_link: '/about',
   };
 
   const defaultStats = {
@@ -224,7 +264,8 @@ export default function Home() {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
+            poster={hero.background_image || undefined}
             className="absolute inset-0 w-full h-full object-cover"
           >
             <source src={hero.background_video} type="video/mp4" />
@@ -424,9 +465,18 @@ export default function Home() {
                     {/* Full Height Image */}
                     <div className="relative h-[70vh] sm:h-[80vh]">
                       <img
-                        src={photo.image_url}
+                        src={getOptimizedSupabaseImageUrl(photo.image_url)}
                         alt={photo.title || 'TARANA Live'}
                         className="w-full h-full object-contain"
+                        loading={index === currentSlide ? 'eager' : 'lazy'}
+                        fetchPriority={index === currentSlide ? 'high' : 'auto'}
+                        decoding="async"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          if (img.src !== photo.image_url) {
+                            img.src = photo.image_url;
+                          }
+                        }}
                       />
 
                       {/* Gradient Overlay */}

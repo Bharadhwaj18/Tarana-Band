@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { useConfigLoader } from '@/lib/useConfigLoader';
 import { createClient } from '@supabase/supabase-js';
 
 interface BandMember {
@@ -21,18 +22,9 @@ interface AboutConfig {
   story_paragraphs?: string[];
 }
 
-interface NavigationConfig {
-  logo_black?: string;
-  logo_white?: string;
-  show_about?: boolean;
-  show_tours?: boolean;
-  show_merch?: boolean;
-  show_videos?: boolean;
-  show_contact?: boolean;
-}
-
 export default function AboutPage() {
   const [bandMembers, setBandMembers] = useState<BandMember[]>([]);
+  const [loading, setLoading] = useState(true);
   const [aboutConfig, setAboutConfig] = useState<AboutConfig>({
     hero_title: "About TARANA",
     hero_description: "Tarana is a dynamic rock band with electrifying performances and unforgettable music. With 7 talented musicians, we bring raw energy and passion to every stage.",
@@ -43,8 +35,9 @@ export default function AboutPage() {
       "From intimate venues to sold-out shows, every performance is a celebration of music and connection. Join us on this incredible journey."
     ]
   });
-  const [navConfig, setNavConfig] = useState<NavigationConfig>({});
-  const [loading, setLoading] = useState(true);
+
+  // Load config - don't show anything until it's ready
+  const { navConfig, isLoaded } = useConfigLoader();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,31 +76,6 @@ export default function AboutPage() {
         setAboutConfig(configData.content as AboutConfig);
       }
 
-      // Fetch general config (navigation, branding)
-      const { data: generalData } = await supabase
-        .from('general_config')
-        .select('*')
-        .eq('is_active', true);
-
-      if (generalData) {
-        const generalConfig: any = {};
-        generalData.forEach((item: any) => {
-          generalConfig[item.section_name] = item.content;
-        });
-
-        const navigationConfig: NavigationConfig = {
-          logo_black: generalConfig.branding?.logo_black,
-          logo_white: generalConfig.branding?.logo_white,
-          show_about: generalConfig.navigation?.show_about !== false,
-          show_tours: generalConfig.navigation?.show_tours !== false,
-          show_merch: generalConfig.navigation?.show_merch !== false,
-          show_videos: generalConfig.navigation?.show_videos !== false,
-          show_contact: generalConfig.navigation?.show_contact !== false,
-        };
-
-        setNavConfig(navigationConfig);
-      }
-
       setLoading(false);
     };
 
@@ -116,7 +84,11 @@ export default function AboutPage() {
 
   return (
     <main className="bg-black">
-      <Navigation config={navConfig} />
+      {!isLoaded ? (
+        <div className="min-h-screen bg-black" />
+      ) : (
+        <>
+          <Navigation config={navConfig} />
 
       {/* Hero Section with Gold Accent */}
       <section className="bg-black text-white py-10 sm:py-12">
@@ -241,6 +213,8 @@ export default function AboutPage() {
       )}
 
       <Footer />
+        </>
+      )}
     </main>
   );
 }

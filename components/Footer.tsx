@@ -1,66 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-
-interface SocialLink {
-  platform: string;
-  url: string;
-}
-
-interface NavigationConfig {
-  show_about?: boolean;
-  show_tours?: boolean;
-  show_merch?: boolean;
-  show_videos?: boolean;
-  show_contact?: boolean;
-}
+import { useAppConfig } from './AppConfigProvider';
 
 export default function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
-  const [logoBlack, setLogoBlack] = useState('');
-  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
-  const [navConfig, setNavConfig] = useState<NavigationConfig>({});
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        return;
-      }
-
-      try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        );
-
-        const { data } = await supabase
-          .from('general_config')
-          .select('*')
-          .eq('is_active', true);
-
-        if (data) {
-          data.forEach((item: any) => {
-            if (item.section_name === 'branding') {
-              setLogoBlack(item.content.logo_black || '');
-            }
-            if (item.section_name === 'social') {
-              setSocialLinks(item.content.social_links || []);
-            }
-            if (item.section_name === 'navigation') {
-              setNavConfig(item.content);
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching footer config:', error);
-      }
-    };
-
-    fetchConfig();
-  }, []);
+  const { navConfig, socialConfig } = useAppConfig();
+  const logoBlack = navConfig.logo_black || '';
+  const socialLinks = socialConfig.social_links || [];
 
   return (
     <footer className="bg-black text-white py-8">

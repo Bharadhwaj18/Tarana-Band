@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useAppConfig } from './AppConfigProvider';
 
 interface NavigationConfig {
   logo_black?: string;
@@ -23,6 +24,8 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
+  const { navConfig } = useAppConfig();
+  const resolvedConfig = config || navConfig;
 
   // Detect scroll position to change header background
   useEffect(() => {
@@ -54,14 +57,19 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
     if (item.href === '/' && pathname === '/') {
       return false;
     }
-    // Always show Home when not on home page
+
+    // Always show Home on non-home pages.
     if (item.configKey === 'home') {
       return true;
     }
-    if (!config || config[item.configKey] === undefined) {
-      return true; // Show by default
+
+    // Default behavior: show only Admin until config is loaded.
+    // If a config flag is missing, keep the tab hidden to avoid misinformation.
+    if (!resolvedConfig || resolvedConfig[item.configKey] === undefined) {
+      return false;
     }
-    return config[item.configKey];
+
+    return resolvedConfig[item.configKey];
   });
 
   const containerClass = isOverlay
@@ -77,9 +85,9 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
         <Link href="/">
           {isOverlay && isScrolled ? (
             // Show black logo when scrolled (dark background) - SMALL SIZE
-            config?.logo_black && (
+            resolvedConfig?.logo_black && (
               <img
-                src={config.logo_black}
+                src={resolvedConfig.logo_black}
                 alt="TARANA Logo"
                 className={`h-14 object-contain`}
                 title="TARANA"
@@ -87,9 +95,9 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
             )
           ) : isOverlay && !isScrolled ? (
             // Show white logo when at top (transparent background) - SMALL SIZE
-            config?.logo_white && (
+            resolvedConfig?.logo_white && (
               <img
-                src={config.logo_white}
+                src={resolvedConfig.logo_white}
                 alt="TARANA Logo"
                 className={`h-14 object-contain`}
                 title="TARANA"
@@ -97,9 +105,9 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
             )
           ) : (
             // For non-overlay navigation, use black logo - SMALL SIZE
-            config?.logo_black && (
+            resolvedConfig?.logo_black && (
               <img
-                src={config.logo_black}
+                src={resolvedConfig.logo_black}
                 alt="TARANA Logo"
                 className={`h-16 object-contain`}
                 title="TARANA"

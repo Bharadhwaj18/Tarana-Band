@@ -1,6 +1,6 @@
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import ProductCard from '@/components/ProductCard';
+import MerchStore from '@/components/MerchStore';
 
 export const revalidate = 60; // Revalidate every 60 seconds (ISR)
 
@@ -16,10 +16,15 @@ interface Product {
   order_position: number;
 }
 
-async function getMerchandise() {
+interface MerchCheckoutConfig {
+  qr_code_url?: string;
+  disclaimer?: string;
+}
+
+async function getMerchandiseData(): Promise<{ products: Product[]; checkoutConfig: MerchCheckoutConfig }> {
   try {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return [];
+      return { products: [], checkoutConfig: {} };
     }
 
     const { createClient } = await import('@supabase/supabase-js');
@@ -36,18 +41,32 @@ async function getMerchandise() {
 
     if (error) {
       console.error('Error fetching merchandise:', error);
-      return [];
+      return { products: [], checkoutConfig: {} };
     }
 
-    return data || [];
+    const { data: checkoutData, error: checkoutError } = await supabase
+      .from('general_config')
+      .select('content')
+      .eq('section_name', 'merch_checkout')
+      .eq('is_active', true)
+      .single();
+
+    if (checkoutError && checkoutError.code !== 'PGRST116') {
+      console.error('Error fetching merch checkout config:', checkoutError);
+    }
+
+    return {
+      products: data || [],
+      checkoutConfig: (checkoutData?.content as MerchCheckoutConfig) || {},
+    };
   } catch (error) {
     console.error('Error:', error);
-    return [];
+    return { products: [], checkoutConfig: {} };
   }
 }
 
 export default async function MerchPage() {
-  const products = await getMerchandise();
+  const { products, checkoutConfig } = await getMerchandiseData();
 
   return (
     <main>
@@ -63,25 +82,7 @@ export default async function MerchPage() {
         </div>
       </section>
 
-      {/* Products Section */}
-      <section className="py-10 sm:py-12 bg-black">
-        <div className="container-custom">
-          <h2 className="heading-lg mb-12 text-white">Featured Products</h2>
-          {products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-300 text-lg">
-                Merchandise coming soon. Check back later!
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
+      <MerchStore products={products} checkoutConfig={checkoutConfig} />
 
       {/* Info Section */}
       <section className="py-10 sm:py-12 bg-black text-white border-t border-gray-700">

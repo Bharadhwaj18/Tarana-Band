@@ -38,6 +38,11 @@ export default function AdminMerchPage() {
     storage_paths: [],
   });
   const [user, setUser] = useState<any>(null);
+  const [checkoutQrUrl, setCheckoutQrUrl] = useState('');
+  const [checkoutQrPath, setCheckoutQrPath] = useState('');
+  const [checkoutDisclaimer, setCheckoutDisclaimer] = useState(
+    'Disclaimer: All merchandise orders are shipped via India Post.'
+  );
   const router = useRouter();
 
   useEffect(() => {
@@ -48,6 +53,7 @@ export default function AdminMerchPage() {
       else {
         setUser(user);
         fetchProducts();
+        fetchCheckoutSettings();
       }
     };
     checkAuth();
@@ -62,6 +68,28 @@ export default function AdminMerchPage() {
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCheckoutSettings = async () => {
+    if (!supabase) return;
+    try {
+      const { data } = await supabase
+        .from('general_config')
+        .select('content')
+        .eq('section_name', 'merch_checkout')
+        .eq('is_active', true)
+        .single();
+
+      if (data?.content) {
+        setCheckoutQrUrl(data.content.qr_code_url || '');
+        setCheckoutQrPath(data.content.qr_code_path || '');
+        setCheckoutDisclaimer(
+          data.content.disclaimer || 'Disclaimer: All merchandise orders are shipped via India Post.'
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching merch checkout settings:', error);
     }
   };
 
@@ -147,6 +175,63 @@ export default function AdminMerchPage() {
         storage_paths: storagePaths,
       };
     });
+  };
+
+  const handleCheckoutQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const uploadResult = await uploadImageToSupabase(supabase, file, 'merch-checkout');
+      if (!uploadResult) {
+        alert('Error uploading QR code');
+        return;
+      }
+
+      if (checkoutQrPath) {
+        await deleteImageFromSupabase(supabase, checkoutQrPath);
+      }
+
+      setCheckoutQrUrl(uploadResult.url);
+      setCheckoutQrPath(uploadResult.path);
+      alert('QR code uploaded successfully!');
+    } catch (error) {
+      console.error('QR upload error:', error);
+      alert('Error uploading QR code');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const saveCheckoutSettings = async () => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase.from('general_config').upsert(
+        {
+          section_name: 'merch_checkout',
+          is_active: true,
+          updated_at: new Date().toISOString(),
+          content: {
+            qr_code_url: checkoutQrUrl,
+            qr_code_path: checkoutQrPath,
+            disclaimer: checkoutDisclaimer,
+          },
+        },
+        { onConflict: 'section_name' }
+      );
+
+      if (error) {
+        alert(`Failed to save checkout settings: ${error.message}`);
+        return;
+      }
+
+      alert('Checkout settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving checkout settings:', error);
+      alert('Error saving checkout settings');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -308,6 +393,66 @@ export default function AdminMerchPage() {
               )}
             </div>
           </form>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 space-y-4">
+          <h2 className="text-xl font-semibold text-gold">Checkout Configuration</h2>
+          <p className="text-sm text-gray-400">
+            Configure the QR code and shipping disclaimer shown on the merch checkout page.
+          </p>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Shipping Disclaimer</label>
+            <textarea
+              value={checkoutDisclaimer}
+              onChange={(e) => setCheckoutDisclaimer(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Payment QR Code</label>
+            {checkoutQrUrl ? (
+              <div className="space-y-2">
+                <img
+                  src={checkoutQrUrl}
+                  alt="Checkout QR preview"
+                  className="w-40 h-40 object-contain bg-white rounded-lg p-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckoutQrUrl('');
+                    setCheckoutQrPath('');
+                  }}
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+                >
+                  Remove QR
+                </button>
+              </div>
+            ) : (
+              <label className="block border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gold transition">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCheckoutQrUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+                <span className="text-sm text-gray-400">Upload QR code image</span>
+                {uploading && <p className="text-xs text-gold mt-1">Uploading...</p>}
+              </label>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={saveCheckoutSettings}
+            className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg"
+          >
+            Save Checkout Settings
+          </button>
         </div>
 
         <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
