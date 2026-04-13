@@ -75,7 +75,7 @@ export default async function MerchPage() {
       {/* Hero Section */}
       <section className="bg-black text-white py-10 sm:py-12">
         <div className="container-custom">
-          <h1 className="heading-display mb-4" style={{ color: 'var(--secondary)' }}>MERCHANDISE</h1>
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold via-gold-light to-gold mb-6" style={{ color: 'var(--secondary)' }}>MERCHANDISE</h1>
           <p className="text-lg sm:text-xl text-gray-300">
             Support Tarana and get exclusive merchandise. Limited edition items available now.
           </p>
