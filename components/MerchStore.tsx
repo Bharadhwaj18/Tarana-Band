@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ProductCard from './ProductCard';
+import { supabase } from '@/lib/supabase';
 
 interface SizeStock {
   [size: string]: number;
@@ -44,13 +45,10 @@ interface CheckoutFormData {
 
 const DEFAULT_DISCLAIMER = 'Disclaimer: All merchandise orders are shipped via India Post.';
 
-export default function MerchStore({
-  products,
-  checkoutConfig,
-}: {
-  products: Product[];
-  checkoutConfig: MerchCheckoutConfig;
-}) {
+export default function MerchStore() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [checkoutConfig, setCheckoutConfig] = useState<MerchCheckoutConfig>({});
+  const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -68,6 +66,60 @@ export default function MerchStore({
   const [checkoutMessage, setCheckoutMessage] = useState('');
   const [addedMessage, setAddedMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+
+  // Fetch products + checkout config; subscribe to realtime changes so stock updates appear instantly
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      const { data: productsData } = await supabase
+        .from('merchandise')
+        .select('*')
+        .eq('is_active', true)
+        .order('order_position', { ascending: true });
+
+      setProducts(productsData || []);
+
+      const { data: checkoutData } = await supabase
+        .from('general_config')
+        .select('content')
+        .eq('section_name', 'merch_checkout')
+        .eq('is_active', true)
+        .single();
+
+      if (checkoutData?.content) {
+        setCheckoutConfig(checkoutData.content as MerchCheckoutConfig);
+      }
+
+      setLoading(false);
+    };
+
+    fetchData();
+
+    // Realtime subscription: any change to merchandise table updates the UI instantly
+    const channel = supabase
+      .channel('merchandise-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'merchandise' },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    // Also refetch when the tab regains focus (catches updates made while tab was in background)
+    const handleFocus = () => fetchData();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const totalAmount = useMemo(
     () => cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
@@ -207,7 +259,11 @@ export default function MerchStore({
               Go to Cart ({totalItems})
             </button>
           </div>
-          {products.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-300 text-lg">Loading products...</p>
+            </div>
+          ) : products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
