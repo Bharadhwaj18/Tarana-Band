@@ -6,6 +6,12 @@ import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils';
 
+interface SizeStock {
+  [size: string]: number;
+}
+
+const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL'];
+
 interface Product {
   id: string;
   name: string;
@@ -18,6 +24,7 @@ interface Product {
   external_link: string;
   is_active: boolean;
   order_position: number;
+  size_stock?: SizeStock | null;
 }
 
 export default function AdminMerchPage() {
@@ -36,6 +43,7 @@ export default function AdminMerchPage() {
     image_urls: [],
     storage_path: '',
     storage_paths: [],
+    size_stock: {},
   });
   const [user, setUser] = useState<any>(null);
   const [checkoutQrUrl, setCheckoutQrUrl] = useState('');
@@ -246,10 +254,21 @@ export default function AdminMerchPage() {
       // Prepare data - only use the new array columns, remove old singular columns
       const { image_url, storage_path, ...restFormData } = formData;
 
+      // Keep all sizes the admin explicitly set (including 0 = sold out).
+      // Only drop sizes that were never touched (undefined / NaN).
+      const cleanedStock = formData.size_stock
+        ? Object.fromEntries(
+            Object.entries(formData.size_stock).filter(
+              ([, v]) => typeof v === 'number' && !isNaN(v)
+            )
+          )
+        : {};
+
       const dataToSave = {
         ...restFormData,
         image_urls: formData.image_urls?.filter(url => url) || null,
         storage_paths: formData.storage_paths?.filter(path => path) || null,
+        size_stock: Object.keys(cleanedStock).length > 0 ? cleanedStock : null,
       };
 
       let result;
@@ -266,7 +285,7 @@ export default function AdminMerchPage() {
       }
 
       alert('Product saved successfully!');
-      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [] });
+      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [], size_stock: {} });
       setEditingId(null);
       fetchProducts();
     } catch (error) {
@@ -378,6 +397,39 @@ export default function AdminMerchPage() {
               <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
               <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Stock per Size</label>
+              <p className="text-xs text-gray-400 mb-3">Enter stock count for sizes you sell. Leave empty for sizes not available. 0 = sold out (hidden on site).</p>
+              <div className="grid grid-cols-5 gap-3">
+                {SIZE_OPTIONS.map((size) => {
+                  const stockVal = formData.size_stock?.[size];
+                  return (
+                    <div key={size}>
+                      <label className="block text-xs text-gray-400 mb-1 text-center">{size}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={stockVal !== undefined && stockVal !== null ? stockVal : ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => {
+                            const updated = { ...prev.size_stock };
+                            if (val === '') {
+                              delete updated[size];
+                            } else {
+                              updated[size] = parseInt(val, 10);
+                            }
+                            return { ...prev, size_stock: updated };
+                          });
+                        }}
+                        placeholder="--"
+                        className="w-full px-2 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none text-center text-sm"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="is_active" checked={formData.is_active || false} onChange={handleInputChange} className="w-4 h-4" />
               <span className="text-sm text-gray-300">Active</span>
@@ -387,7 +439,7 @@ export default function AdminMerchPage() {
                 {editingId ? 'Update' : 'Add'} Product
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [] }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [], size_stock: {} }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
               )}
@@ -463,6 +515,28 @@ export default function AdminMerchPage() {
                 <div key={product.id} className="border border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gray-700">
                   <h3 className="font-semibold text-gray-300">{product.name}</h3>
                   <p className="text-sm text-gray-400 mt-1">₹{product.price.toFixed(2)}</p>
+                  {product.size_stock && Object.keys(product.size_stock).length > 0 && (
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {SIZE_OPTIONS.map((size) => {
+                        const qty = (product.size_stock as SizeStock)[size];
+                        if (qty === undefined) return null;
+                        return (
+                          <span
+                            key={size}
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              qty <= 0
+                                ? 'bg-red-900/50 text-red-400'
+                                : qty <= 5
+                                ? 'bg-yellow-900/50 text-yellow-400'
+                                : 'bg-green-900/50 text-green-400'
+                            }`}
+                          >
+                            {size}: {qty}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   <p className="text-sm text-gray-400 mt-2">{product.description.slice(0, 100)}...</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => handleEdit(product)} className="text-gold hover:text-gold-light text-sm font-semibold">Edit</button>

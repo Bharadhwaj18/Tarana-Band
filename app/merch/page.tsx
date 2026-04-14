@@ -2,7 +2,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import MerchStore from '@/components/MerchStore';
 
-export const revalidate = 60; // Revalidate every 60 seconds (ISR)
+export const dynamic = 'force-dynamic'; // Stock changes need to be real-time
 
 interface Product {
   id: string;
@@ -14,6 +14,7 @@ interface Product {
   external_link: string;
   is_active: boolean;
   order_position: number;
+  size_stock?: { [size: string]: number } | null;
 }
 
 interface MerchCheckoutConfig {

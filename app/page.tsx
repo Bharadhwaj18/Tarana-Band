@@ -202,13 +202,17 @@ export default function Home() {
   };
 
   const defaultStats = {
-    shows_played: 150,
-    fans: 50000,
-    years_active: 5,
-    albums: 3,
+    shows_played: 100,
+    fans: 10000,
+    years_active: 3,
+    albums: 1,
   };
 
   const hero = config.hero || defaultHero;
+  const heroCtaText =
+    hero.cta_link === '/about' && (!hero.cta_text || hero.cta_text.trim().toLowerCase() === 'view tours')
+      ? 'About Us'
+      : hero.cta_text;
   const stats = config.stats || defaultStats;
   const musicEmbed = config.music_embed;
   const featuredPhotos = config.featured_photos?.photos?.sort((a, b) => a.order - b.order) || [];
@@ -301,7 +305,7 @@ export default function Home() {
             href={hero.cta_link}
             className="inline-block px-12 py-4 bg-gold hover:bg-gold-light text-black font-bold text-xl rounded-full transform hover:scale-105 transition-all shadow-2xl shadow-gold/50"
           >
-            {hero.cta_text}
+            {heroCtaText}
           </a>
         </div>
 

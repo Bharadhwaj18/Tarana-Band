@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 import ProductCard from './ProductCard';
 
+interface SizeStock {
+  [size: string]: number;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -13,6 +17,7 @@ interface Product {
   external_link: string;
   is_active: boolean;
   order_position: number;
+  size_stock?: SizeStock | null;
 }
 
 interface MerchCheckoutConfig {
@@ -62,6 +67,7 @@ export default function MerchStore({
   const [submitting, setSubmitting] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
   const [addedMessage, setAddedMessage] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
 
   const totalAmount = useMemo(
     () => cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
@@ -82,8 +88,12 @@ export default function MerchStore({
 
       return [...prev, { product, size, quantity: 1 }];
     });
-    setAddedMessage(`${product.name} added to cart`);
-    setTimeout(() => setAddedMessage(''), 1800);
+    setAddedMessage(size === 'One Size' ? `${product.name} added to cart!` : `${product.name} (${size}) added to cart!`);
+    setToastVisible(true);
+    setTimeout(() => {
+      setToastVisible(false);
+      setTimeout(() => setAddedMessage(''), 400);
+    }, 2500);
   };
 
   const updateQuantity = (index: number, delta: number) => {
@@ -169,6 +179,22 @@ export default function MerchStore({
 
   return (
     <>
+      {/* Toast notification */}
+      {addedMessage && (
+        <div
+          className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
+            toastVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+          }`}
+        >
+          <div className="flex items-center gap-3 bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl shadow-green-900/40">
+            <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-semibold text-sm sm:text-base">{addedMessage}</span>
+          </div>
+        </div>
+      )}
+
       <section className="py-10 sm:py-12 bg-black">
         <div className="container-custom">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -181,9 +207,6 @@ export default function MerchStore({
               Go to Cart ({totalItems})
             </button>
           </div>
-          {addedMessage && (
-            <p className="text-green-400 text-sm font-semibold mb-6">{addedMessage}</p>
-          )}
           {products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
@@ -224,7 +247,7 @@ export default function MerchStore({
                     {cart.map((item, index) => (
                       <div key={`${item.product.id}-${item.size}`} className="border border-gray-700 rounded-lg p-4">
                         <p className="text-white font-semibold">{item.product.name}</p>
-                        <p className="text-gray-300 text-sm">Size: {item.size}</p>
+                        {item.size !== 'One Size' && <p className="text-gray-300 text-sm">Size: {item.size}</p>}
                         <p className="text-gray-300 text-sm">Price: Rs. {item.product.price.toFixed(2)}</p>
                         <div className="flex items-center gap-3 mt-2">
                           <button type="button" onClick={() => updateQuantity(index, -1)} className="px-3 py-1 bg-gray-700 text-white rounded">-</button>

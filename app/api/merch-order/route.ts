@@ -82,6 +82,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Failed to save order: ${insertError.message}` }, { status: 500 });
     }
 
+    // Decrement stock for each item
+    for (const item of items) {
+      const productId = item.product?.id;
+      const size = item.size;
+      const qty = item.quantity || 1;
+      if (!productId || !size) continue;
+
+      const { data: product } = await supabase
+        .from('merchandise')
+        .select('size_stock')
+        .eq('id', productId)
+        .single();
+
+      if (product?.size_stock && product.size_stock[size] !== undefined) {
+        const newQty = Math.max(0, product.size_stock[size] - qty);
+        await supabase
+          .from('merchandise')
+          .update({
+            size_stock: { ...product.size_stock, [size]: newQty },
+          })
+          .eq('id', productId);
+      }
+    }
+
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const adminEmail = process.env.ADMIN_EMAIL || 'noreply@resend.dev';

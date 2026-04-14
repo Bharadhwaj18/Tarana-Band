@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import ProductCarousel from './ProductCarousel';
 
+interface SizeStock {
+  [size: string]: number;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -13,6 +17,7 @@ interface Product {
   external_link: string;
   is_active: boolean;
   order_position: number;
+  size_stock?: SizeStock | null;
 }
 
 interface ProductCardProps {
@@ -51,27 +56,69 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         )}
         {onAddToCart ? (
           <div className="mt-4 space-y-3">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Size</label>
-              <select
-                value={selectedSize}
-                onChange={(e) => setSelectedSize(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              >
-                {SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={() => onAddToCart(product, selectedSize)}
-              className="btn-primary block w-full text-center"
-            >
-              Add to Cart
-            </button>
+            {(() => {
+              const stock = product.size_stock;
+              const hasStock = stock && Object.keys(stock).length > 0;
+
+              // No size_stock configured → no sizes needed (non-clothing item)
+              if (!hasStock) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onAddToCart(product, 'One Size')}
+                    className="btn-primary block w-full text-center"
+                  >
+                    Add to Cart
+                  </button>
+                );
+              }
+
+              // Has stock config → filter to sizes with quantity > 0
+              const availableSizes = SIZE_OPTIONS.filter((s) => (stock[s] ?? 0) > 0);
+
+              if (availableSizes.length === 0) {
+                return (
+                  <div className="bg-gray-200 text-gray-500 font-bold text-center py-3 rounded-lg uppercase tracking-wide">
+                    Sold Out
+                  </div>
+                );
+              }
+
+              const effectiveSize = availableSizes.includes(selectedSize)
+                ? selectedSize
+                : availableSizes[0];
+
+              return (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Size</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {availableSizes.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setSelectedSize(size)}
+                          className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                            effectiveSize === size
+                              ? 'bg-black text-white border-black'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-black'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onAddToCart(product, effectiveSize)}
+                    className="btn-primary block w-full text-center"
+                  >
+                    Add to Cart
+                  </button>
+                </>
+              );
+            })()}
           </div>
         ) : (
           <a
