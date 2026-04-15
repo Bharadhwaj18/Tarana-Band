@@ -28,6 +28,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/admin/members', label: 'Band Members', icon: '👥' },
     { href: '/admin/tours', label: 'Tours & Events', icon: '🎤' },
     { href: '/admin/merch', label: 'Merchandise', icon: '🛍️' },
+    { href: '/admin/inventory', label: 'Inventory', icon: '📊' },
     { href: '/admin/merch-orders', label: 'Merch Orders', icon: '📦' },
     { href: '/admin/videos', label: 'Videos', icon: '🎥' },
     { href: '/admin/contact-submissions', label: 'Contact Messages', icon: '📧' },
