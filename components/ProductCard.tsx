@@ -13,6 +13,7 @@ interface Product {
   description: string;
   image_url: string | null;
   image_urls?: string[] | null;
+  image_positions?: string[] | null;
   price: number;
   external_link: string;
   is_active: boolean;
@@ -30,12 +31,8 @@ const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL'];
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedSize, setSelectedSize] = useState('M');
-  const descriptionLimit = 150; // Character limit for preview
 
-  const shouldShowToggle = product.description.length > descriptionLimit;
-  const displayDescription = isExpanded
-    ? product.description
-    : product.description.slice(0, descriptionLimit) + (shouldShowToggle ? '...' : '');
+  const shouldShowToggle = product.description.length > 150;
 
   return (
     <div className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
@@ -45,13 +42,24 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         <p className="text-red-600 font-bold text-lg mb-3">
           ₹{product.price.toFixed(2)}
         </p>
-        <p className="text-gray-600 mb-2">{displayDescription}</p>
+        <div className={`relative overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px]' : 'max-h-[5rem]'}`}>
+          <p className="text-gray-600">{product.description}</p>
+          {!isExpanded && shouldShowToggle && (
+            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          )}
+        </div>
         {shouldShowToggle && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-red-600 hover:text-red-700 text-sm font-semibold mb-4"
+            className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm font-semibold mt-2 mb-4"
           >
-            {isExpanded ? 'Show less' : 'Show more'}
+            <span>{isExpanded ? 'Show less' : 'Show more'}</span>
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
         )}
         {onAddToCart ? (

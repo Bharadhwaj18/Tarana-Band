@@ -18,6 +18,7 @@ interface Product {
   description: string;
   image_url: string | null;
   image_urls?: string[] | null;
+  image_positions?: string[] | null;
   storage_path?: string | null;
   storage_paths?: string[] | null;
   price: number;
@@ -31,6 +32,7 @@ export default function AdminMerchPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
@@ -41,6 +43,7 @@ export default function AdminMerchPage() {
     order_position: 0,
     image_url: '',
     image_urls: [],
+    image_positions: [],
     storage_path: '',
     storage_paths: [],
     size_stock: {},
@@ -245,7 +248,7 @@ export default function AdminMerchPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     if (!supabase) return;
     e.preventDefault();
-    if (!formData.name || !formData.description || !formData.external_link) {
+    if (!formData.name || !formData.description) {
       alert('Please fill required fields');
       return;
     }
@@ -267,6 +270,7 @@ export default function AdminMerchPage() {
       const dataToSave = {
         ...restFormData,
         image_urls: formData.image_urls?.filter(url => url) || null,
+        image_positions: formData.image_positions?.length ? formData.image_positions : null,
         storage_paths: formData.storage_paths?.filter(path => path) || null,
         size_stock: Object.keys(cleanedStock).length > 0 ? cleanedStock : null,
       };
@@ -285,7 +289,7 @@ export default function AdminMerchPage() {
       }
 
       alert('Product saved successfully!');
-      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [], size_stock: {} });
+      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {} });
       setEditingId(null);
       fetchProducts();
     } catch (error) {
@@ -352,45 +356,104 @@ export default function AdminMerchPage() {
               <textarea name="description" value={formData.description || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" rows={4} />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Shop Link</label>
-              <input type="url" name="external_link" value={formData.external_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Product Images (up to 3)</label>
+              <label className="block text-sm font-semibold text-gray-300 mb-1">Product Images (up to 3)</label>
+              <p className="text-xs text-gray-400 mb-3">
+                Upload up to 3 photos. Once uploaded, <span className="text-gold font-medium">click or drag anywhere on the image</span> to set the focal point — that part of the photo will stay visible when the site crops it for the card.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[0, 1, 2].map((index) => (
-                  <div key={index} className="space-y-2">
-                    <p className="text-xs text-gray-400">Image {index + 1}</p>
-                    {formData.image_urls?.[index] ? (
-                      <div className="space-y-2">
-                        <img
-                          src={formData.image_urls[index]}
-                          alt={`Product preview ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="w-full bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="block border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gold transition">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleMultiplePhotoUpload(e, index)}
-                          disabled={uploading}
-                          className="hidden"
-                        />
-                        <span className="text-xs text-gray-400">Click to upload</span>
-                        {uploading && <p className="text-xs text-gold mt-1">Uploading...</p>}
-                      </label>
-                    )}
-                  </div>
-                ))}
+                {[0, 1, 2].map((index) => {
+                  const imgUrl = formData.image_urls?.[index];
+                  const rawPos = formData.image_positions?.[index] || '50% 50%';
+                  const parts = rawPos.split(' ');
+                  const dotX = parseFloat(parts[0]);
+                  const dotY = parseFloat(parts[1]);
+                  const validDot = !isNaN(dotX) && !isNaN(dotY);
+
+                  const applyPosition = (clientX: number, clientY: number, el: HTMLElement) => {
+                    const rect = el.getBoundingClientRect();
+                    const x = Math.min(100, Math.max(0, Math.round(((clientX - rect.left) / rect.width) * 100)));
+                    const y = Math.min(100, Math.max(0, Math.round(((clientY - rect.top) / rect.height) * 100)));
+                    setFormData((prev) => {
+                      const positions = prev.image_positions ? [...prev.image_positions] : ['50% 50%', '50% 50%', '50% 50%'];
+                      while (positions.length < 3) positions.push('50% 50%');
+                      positions[index] = `${x}% ${y}%`;
+                      return { ...prev, image_positions: positions };
+                    });
+                  };
+
+                  return (
+                    <div key={index} className="space-y-2">
+                      <p className="text-xs text-gray-400">Image {index + 1}</p>
+                      {imgUrl ? (
+                        <div className="space-y-2">
+                          <div
+                            className="relative w-full h-64 bg-gray-900 rounded-lg overflow-hidden cursor-crosshair select-none"
+                            onMouseDown={(e) => {
+                              setDraggingIndex(index);
+                              applyPosition(e.clientX, e.clientY, e.currentTarget);
+                            }}
+                            onMouseMove={(e) => {
+                              if (draggingIndex === index) applyPosition(e.clientX, e.clientY, e.currentTarget);
+                            }}
+                            onMouseUp={() => setDraggingIndex(null)}
+                            onMouseLeave={() => setDraggingIndex(null)}
+                            onTouchStart={(e) => {
+                              setDraggingIndex(index);
+                              applyPosition(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget);
+                            }}
+                            onTouchMove={(e) => {
+                              if (draggingIndex === index) applyPosition(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget);
+                            }}
+                            onTouchEnd={() => setDraggingIndex(null)}
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={`Product preview ${index + 1}`}
+                              className="w-full h-full object-cover pointer-events-none"
+                              style={{ objectPosition: rawPos }}
+                            />
+                            {/* Focal point crosshair */}
+                            {validDot && (
+                              <>
+                                <div
+                                  className="absolute top-0 bottom-0 w-px bg-white/40 pointer-events-none"
+                                  style={{ left: `${dotX}%` }}
+                                />
+                                <div
+                                  className="absolute left-0 right-0 h-px bg-white/40 pointer-events-none"
+                                  style={{ top: `${dotY}%` }}
+                                />
+                                <div
+                                  className="absolute w-4 h-4 rounded-full border-2 border-white bg-gold/70 -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow"
+                                  style={{ left: `${dotX}%`, top: `${dotY}%` }}
+                                />
+                              </>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="w-full bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-gold transition">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleMultiplePhotoUpload(e, index)}
+                            disabled={uploading}
+                            className="hidden"
+                          />
+                          <span className="text-xs text-gray-400">Click to upload</span>
+                          {uploading && <p className="text-xs text-gold mt-1">Uploading...</p>}
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <div>
@@ -439,7 +502,7 @@ export default function AdminMerchPage() {
                 {editingId ? 'Update' : 'Add'} Product
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], storage_path: '', storage_paths: [], size_stock: {} }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {} }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
               )}

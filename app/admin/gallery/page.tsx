@@ -141,10 +141,36 @@ export default function AdminGalleryPage() {
     if (error) {
       console.error('Error deleting photo:', error);
       setMessage('Error deleting photo');
-    } else {
-      setMessage('Photo deleted successfully');
-      fetchPhotos();
+      return;
     }
+
+    // Remove from homepage carousel if it was featured there
+    try {
+      const { data: configData } = await supabase
+        .from('general_config')
+        .select('content')
+        .eq('section_name', 'featured_photos')
+        .single();
+
+      if (configData?.content?.photos) {
+        const before = configData.content.photos as any[];
+        const after = before.filter((p) => p.id !== photo.id);
+        if (after.length !== before.length) {
+          await supabase
+            .from('general_config')
+            .update({
+              content: { ...configData.content, photos: after },
+              updated_at: new Date().toISOString(),
+            })
+            .eq('section_name', 'featured_photos');
+        }
+      }
+    } catch (err) {
+      console.error('Error cleaning up carousel reference:', err);
+    }
+
+    setMessage('Photo deleted successfully');
+    fetchPhotos();
   };
 
   if (loading) {
