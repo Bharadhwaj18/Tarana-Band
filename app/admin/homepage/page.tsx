@@ -197,85 +197,42 @@ export default function AdminHomepagePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 50MB for video)
     if (file.size > 50 * 1024 * 1024) {
-      setMessage('Video file too large. Maximum 50MB allowed. Please compress your video.');
-      return;
-    }
-
-    // Validate video MIME type
-    const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
-    if (!validVideoTypes.includes(file.type)) {
-      setMessage(`Invalid video format. Supported: MP4, WebM. Got: ${file.type}`);
+      setMessage('Error: Video file too large. Maximum 50MB allowed.');
       return;
     }
 
     setHeroVideoUploading(true);
-    setMessage('Validating video orientation...');
-
-    // Validate landscape orientation
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-
-    const checkLandscape = () => {
-      return new Promise<void>((resolve, reject) => {
-        video.onloadedmetadata = () => {
-          if (video.videoWidth < video.videoHeight) {
-            reject(new Error('Video must be in landscape orientation (width must be ≥ height)'));
-          } else {
-            resolve();
-          }
-        };
-        video.onerror = () => reject(new Error('Failed to read video metadata'));
-        video.src = URL.createObjectURL(file);
-      });
-    };
+    setMessage('Uploading video...');
 
     try {
-      await checkLandscape();
-      URL.revokeObjectURL(video.src);
-
-      setMessage('Uploading video to Supabase...');
-
-      const fileExt = file.name.split('.').pop() || 'mp4';
-      const filePath = `hero-video/current.${fileExt}`;
-
-      // Keep only one hero video file by deleting the previous file if needed.
-      if (heroVideoStorage && heroVideoStorage !== filePath) {
+      // Delete the old video first — overwriting existing files triggers RLS errors
+      if (heroVideoStorage) {
         await supabase.storage.from('photos').remove([heroVideoStorage]);
       }
 
-      // Upload to Supabase with proper content type
-      const { data, error } = await supabase.storage
+      // Unique timestamped path so every upload is a fresh INSERT
+      const fileExt = file.name.split('.').pop() || 'mp4';
+      const filePath = `hero-video/${Date.now()}.${fileExt}`;
+
+      const { error } = await supabase.storage
         .from('photos')
         .upload(filePath, file, {
-          cacheControl: '31536000',
-          upsert: true,
-          contentType: file.type
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
         });
 
-      if (error) {
-        console.error('Upload error details:', error);
-        throw new Error(`Upload failed: ${error.message}`);
-      }
+      if (error) throw new Error(error.message);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('photos')
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filePath);
+      if (!urlData?.publicUrl) throw new Error('Failed to get public URL');
 
-      if (!urlData?.publicUrl) {
-        throw new Error('Failed to get public URL');
-      }
-
-      const versionedUrl = `${urlData.publicUrl}?v=${Date.now()}`;
-      setHeroBgVideo(versionedUrl);
+      setHeroBgVideo(urlData.publicUrl);
       setHeroVideoStorage(filePath);
       setMessage('✓ Video uploaded successfully!');
     } catch (error: any) {
-      console.error('Full video upload error:', error);
-      const errorMsg = error?.message || 'Unknown error occurred';
-      setMessage(`Error: ${errorMsg}`);
+      setMessage(`Error: ${error?.message || 'Upload failed'}`);
     }
 
     setHeroVideoUploading(false);
