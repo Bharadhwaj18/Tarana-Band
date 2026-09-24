@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { createClient } from '@supabase/supabase-js';
+import { trackEvent } from '@/lib/analytics';
 
 interface NavigationConfig {
   logo_black?: string;
@@ -96,6 +97,7 @@ export default function ContactPage() {
       const data = await response.json();
 
       if (response.ok) {
+        trackEvent('contact_form_submit');
         setStatus('success');
         setFormData({ name: '', email: '', phone: '', message: '' });
         // Reset success message after 5 seconds

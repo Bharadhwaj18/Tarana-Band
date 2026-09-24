@@ -1,5 +1,6 @@
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import TourTicketButton from '@/components/TourTicketButton';
 
 export const revalidate = 60; // Revalidate every 60 seconds (ISR)
 
@@ -102,14 +103,12 @@ export default async function ToursPage() {
                         <p className="text-gray-600 mt-2">{tour.description}</p>
                       )}
                     </div>
-                    <a
+                    <TourTicketButton
                       href={tour.ticket_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-primary whitespace-nowrap"
-                    >
-                      Get Tickets
-                    </a>
+                      venueName={tour.venue_name}
+                      city={tour.city}
+                      date={tour.date}
+                    />
                   </div>
                 </div>
               ))}

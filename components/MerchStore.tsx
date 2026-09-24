@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProductCard from './ProductCard';
 import { supabase } from '@/lib/supabase';
+import { trackEvent } from '@/lib/analytics';
 
 interface SizeStock {
   [size: string]: number;
@@ -141,6 +142,11 @@ export default function MerchStore() {
 
       return [...prev, { product, size, quantity: 1 }];
     });
+    trackEvent('add_to_cart', {
+      currency: 'INR',
+      value: product.price,
+      items: [{ item_id: product.id, item_name: product.name, item_variant: size, price: product.price, quantity: 1 }],
+    });
     setAddedMessage(size === 'One Size' ? `${product.name} added to cart!` : `${product.name} (${size}) added to cart!`);
     setToastVisible(true);
     setTimeout(() => {
@@ -185,6 +191,12 @@ export default function MerchStore() {
       return;
     }
 
+    trackEvent('begin_checkout', {
+      currency: 'INR',
+      value: totalAmount,
+      items: cart.map(i => ({ item_id: i.product.id, item_name: i.product.name, item_variant: i.size, price: i.product.price, quantity: i.quantity })),
+    });
+
     setSubmitting(true);
     try {
       const payload = new FormData();
@@ -210,6 +222,11 @@ export default function MerchStore() {
         throw new Error(data.error || 'Failed to place order.');
       }
 
+      trackEvent('purchase', {
+        currency: 'INR',
+        value: totalAmount,
+        items: cart.map(i => ({ item_id: i.product.id, item_name: i.product.name, item_variant: i.size, price: i.product.price, quantity: i.quantity })),
+      });
       setCheckoutMessage('Order confirmed! A confirmation email has been sent.');
       setCart([]);
       setPaymentProof(null);
@@ -254,7 +271,10 @@ export default function MerchStore() {
             <h2 className="heading-lg text-white">Featured Products</h2>
             <button
               type="button"
-              onClick={() => setIsCartOpen(true)}
+              onClick={() => {
+                setIsCartOpen(true);
+                trackEvent('view_cart', { currency: 'INR', value: totalAmount, item_count: totalItems });
+              }}
               className="px-5 py-2.5 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 border border-gray-700"
             >
               Go to Cart ({totalItems})

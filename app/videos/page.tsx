@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import VideoModal from '@/components/VideoModal';
-import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { trackEvent } from '@/lib/analytics';
 
 interface VideoCategory {
   id: string;
@@ -228,7 +228,10 @@ export default function VideosPage() {
                     {visibleVideos.map((video) => (
                       <button
                         key={video.id}
-                        onClick={() => setSelectedVideo(video)}
+                        onClick={() => {
+                          setSelectedVideo(video);
+                          trackEvent('video_play', { video_title: video.title, video_type: video.video_type });
+                        }}
                         className="flex-shrink-0 group cursor-pointer transition-transform hover:scale-105"
                         style={{ width: '280px' }}
                       >
