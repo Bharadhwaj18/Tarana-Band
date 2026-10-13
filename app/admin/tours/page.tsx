@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
+import { getTourStatus, isTourDatePast } from '@/lib/tours';
 
 interface Tour {
   id: string;
@@ -62,20 +63,9 @@ export default function AdminToursPage() {
     const { name, value } = e.target;
     let updatedData = { ...formData, [name]: value };
 
-    // Auto-adjust status based on date if needed
-    if (name === 'date') {
-      const tourDate = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // If setting date to past, auto-set status to "past"
-      if (tourDate < today && formData.status === 'upcoming') {
-        updatedData.status = 'past';
-      }
-      // If setting date to future, auto-set status to "upcoming" (unless it's already set)
-      else if (tourDate >= today && !formData.status) {
-        updatedData.status = 'upcoming';
-      }
+    // Status follows the date automatically (cancelled stays cancelled)
+    if (name === 'date' && value) {
+      updatedData.status = getTourStatus({ date: value, status: formData.status });
     }
 
     setFormData((prev) => ({ ...prev, ...updatedData }));
@@ -84,16 +74,8 @@ export default function AdminToursPage() {
   const getValidStatusOptions = () => {
     if (!formData.date) return ['upcoming', 'past', 'cancelled'];
 
-    const tourDate = new Date(formData.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // If date is in the past, only allow "past" or "cancelled"
-    if (tourDate < today) {
-      return ['past', 'cancelled'];
-    }
-    // If date is in the future, only allow "upcoming"
-    return ['upcoming'];
+    // Upcoming/past is decided by the date; only "cancelled" is a manual choice
+    return [isTourDatePast(formData.date) ? 'past' : 'upcoming', 'cancelled'];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,21 +86,17 @@ export default function AdminToursPage() {
       return;
     }
 
-    // Validate that past dates cannot have "upcoming" status
-    const tourDate = new Date(formData.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (tourDate < today && formData.status === 'upcoming') {
-      alert('Tour date is in the past. Please set status to "Past" or "Cancelled".');
-      return;
-    }
+    // Keep the stored status in line with the date
+    const tourData = {
+      ...formData,
+      status: getTourStatus({ date: formData.date, status: formData.status }),
+    };
 
     try {
       if (editingId) {
-        await supabase.from('tours').update(formData).eq('id', editingId);
+        await supabase.from('tours').update(tourData).eq('id', editingId);
       } else {
-        await supabase.from('tours').insert([formData]);
+        await supabase.from('tours').insert([tourData]);
       }
       setFormData({
         date: '',
@@ -169,9 +147,9 @@ export default function AdminToursPage() {
                 <input type="date" name="date" value={formData.date || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
                 {formData.date && (
                   <p className="text-xs text-gray-400 mt-1">
-                    {new Date(formData.date) < new Date(new Date().setHours(0, 0, 0, 0))
-                      ? '⚠️ Past date - Status must be "Past" or "Cancelled"'
-                      : '✓ Future date - Status should be "Upcoming"'}
+                    {isTourDatePast(formData.date)
+                      ? 'Past date - this show will be listed under Past Shows'
+                      : '✓ Upcoming date - this show will be listed under Upcoming Shows'}
                   </p>
                 )}
               </div>
@@ -232,18 +210,21 @@ export default function AdminToursPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {tours.map((tour) => (
+                  {tours.map((tour) => {
+                    const status = getTourStatus(tour);
+                    return (
                     <tr key={tour.id} className="hover:bg-gray-750">
                       <td className="px-4 py-3 text-gray-300">{new Date(tour.date).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-gray-300">{tour.venue_name}</td>
                       <td className="px-4 py-3 text-gray-300">{tour.city}</td>
-                      <td className="px-4 py-3"><span className={`px-3 py-1 rounded-full text-xs font-semibold ${tour.status === 'upcoming' ? 'bg-green-900/50 text-green-300' : tour.status === 'past' ? 'bg-gray-700 text-gray-400' : 'bg-red-900/50 text-red-300'}`}>{tour.status}</span></td>
+                      <td className="px-4 py-3"><span className={`px-3 py-1 rounded-full text-xs font-semibold ${status === 'upcoming' ? 'bg-green-900/50 text-green-300' : status === 'past' ? 'bg-gray-700 text-gray-400' : 'bg-red-900/50 text-red-300'}`}>{status}</span></td>
                       <td className="px-4 py-3 space-x-2">
                         <button onClick={() => handleEdit(tour)} className="text-gold hover:text-gold-light">Edit</button>
                         <button onClick={() => handleDelete(tour.id)} className="text-red-400 hover:text-red-300">Delete</button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -1,6 +1,7 @@
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import TourTicketButton from '@/components/TourTicketButton';
+import { getTourStatus } from '@/lib/tours';
 
 export const revalidate = 60; // Revalidate every 60 seconds (ISR)
 
@@ -26,25 +27,21 @@ async function getTours() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
-    const { data: upcomingData, error: upcomingError } = await supabase
+    const { data, error } = await supabase
       .from('tours')
       .select('*')
-      .eq('status', 'upcoming')
+      .neq('status', 'cancelled')
       .order('date', { ascending: true });
 
-    const { data: pastData, error: pastError } = await supabase
-      .from('tours')
-      .select('*')
-      .eq('status', 'past')
-      .order('date', { ascending: false });
-
-    if (upcomingError || pastError) {
-      console.error('Error fetching tours:', upcomingError || pastError);
+    if (error) {
+      console.error('Error fetching tours:', error);
     }
 
+    // Split by date so shows move to past automatically once the day is over
+    const tours: Tour[] = data || [];
     return {
-      upcoming: upcomingData || [],
-      past: pastData || [],
+      upcoming: tours.filter((tour) => getTourStatus(tour) === 'upcoming'),
+      past: tours.filter((tour) => getTourStatus(tour) === 'past').reverse(),
     };
   } catch (error) {
     console.error('Error:', error);

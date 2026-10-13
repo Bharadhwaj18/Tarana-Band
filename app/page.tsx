@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { createClient } from '@supabase/supabase-js';
+import { getTourStatus } from '@/lib/tours';
 
 interface GalleryPhoto {
   id: string;
@@ -163,7 +164,7 @@ export default function Home() {
       const { data: toursData } = await supabase
         .from('tours')
         .select('*')
-        .eq('status', 'upcoming')
+        .neq('status', 'cancelled')
         .order('date', { ascending: true });
 
       if (toursData && toursData.length > 0) {
@@ -171,7 +172,7 @@ export default function Home() {
         const threeMonthsFromNow = new Date(now.getTime() + 3 * 30 * 24 * 60 * 60 * 1000);
         const upcomingTour = toursData.find((tour: any) => {
           const tourDate = new Date(tour.date);
-          return tourDate >= now && tourDate <= threeMonthsFromNow;
+          return getTourStatus(tour) === 'upcoming' && tourDate <= threeMonthsFromNow;
         });
         if (upcomingTour) {
           setUpcomingToursSoon(upcomingTour);
