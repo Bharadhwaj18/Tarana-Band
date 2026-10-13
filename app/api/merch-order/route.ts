@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { sendEmail } from '@/lib/email';
+import { adjustStock } from '@/lib/merchStock';
+import { getProofExtension, validateProofImage } from '@/lib/uploads';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,11 +27,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment proof is required.' }, { status: 400 });
     }
 
-    let items: any[] = [];
+    const proofError = validateProofImage(paymentProof);
+    if (proofError) {
+      return NextResponse.json({ error: proofError }, { status: 400 });
+    }
+
+    let cartItems: any[] = [];
     try {
-      items = JSON.parse(itemsRaw);
+      cartItems = JSON.parse(itemsRaw);
     } catch {
       return NextResponse.json({ error: 'Invalid cart data.' }, { status: 400 });
+    }
+    if (!Array.isArray(cartItems) || cartItems.length === 0) {
+      return NextResponse.json({ error: 'Your cart is empty.' }, { status: 400 });
     }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -41,14 +51,76 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
-    const proofExt = paymentProof.name.split('.').pop() || 'jpg';
-    const proofPath = `merch-payment-proofs/${Date.now()}-${Math.random().toString(36).slice(2)}.${proofExt}`;
+    // Prices and stock come from the database, never from the browser
+    const productIds = Array.from(new Set(cartItems.map((item) => String(item?.product?.id || ''))));
+    const { data: products, error: productsError } = await supabase
+      .from('merchandise')
+      .select('id, name, price, is_active, size_stock, image_url')
+      .in('id', productIds);
+
+    if (productsError) {
+      return NextResponse.json({ error: 'Could not verify your cart. Please try again.' }, { status: 500 });
+    }
+
+    const items: any[] = [];
+    const requested: Record<string, number> = {};
+    let calculatedTotal = 0;
+
+    for (const cartItem of cartItems) {
+      const product = (products || []).find((p: any) => p.id === cartItem?.product?.id);
+      const size = String(cartItem?.size || '');
+      const quantity = Number(cartItem?.quantity);
+
+      if (!product || !product.is_active) {
+        return NextResponse.json(
+          { error: `${cartItem?.product?.name || 'An item'} is no longer available. Please refresh and try again.` },
+          { status: 400 }
+        );
+      }
+      if (!size || !Number.isInteger(quantity) || quantity < 1) {
+        return NextResponse.json({ error: 'Invalid cart data.' }, { status: 400 });
+      }
+
+      const stock = product.size_stock;
+      if (stock && Object.keys(stock).length > 0) {
+        const key = `${product.id}:${size}`;
+        requested[key] = (requested[key] || 0) + quantity;
+        const available = Number(stock[size] ?? 0);
+        if (requested[key] > available) {
+          return NextResponse.json(
+            {
+              error:
+                available > 0
+                  ? `Only ${available} left of ${product.name} (${size}). Please update your cart.`
+                  : `${product.name} (${size}) is sold out. Please update your cart.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      calculatedTotal += Number(product.price) * quantity;
+      items.push({
+        product: { id: product.id, name: product.name, price: product.price, image_url: product.image_url },
+        size,
+        quantity,
+      });
+    }
+
+    if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+      return NextResponse.json(
+        { error: 'Prices have changed since you opened this page. Please refresh and try again.' },
+        { status: 400 }
+      );
+    }
+
+    const proofPath = `merch-payment-proofs/${Date.now()}-${Math.random().toString(36).slice(2)}.${getProofExtension(paymentProof)}`;
 
     const uploadResult = await supabase.storage
       .from('photos')
       .upload(proofPath, paymentProof, {
         upsert: false,
-        contentType: paymentProof.type || 'image/jpeg',
+        contentType: paymentProof.type,
         cacheControl: '3600',
       });
 
@@ -70,7 +142,7 @@ export async function POST(request: NextRequest) {
         state,
         pincode,
         items,
-        total_amount: totalAmount,
+        total_amount: calculatedTotal,
         payment_proof_url: paymentProofUrl,
         payment_proof_path: proofPath,
         status: 'confirmed',
@@ -83,56 +155,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Decrement stock for each item
-    for (const item of items) {
-      const productId = item.product?.id;
-      const size = item.size;
-      const qty = item.quantity || 1;
-      if (!productId || !size) continue;
+    await adjustStock(supabase, items, -1);
 
-      const { data: product } = await supabase
-        .from('merchandise')
-        .select('size_stock')
-        .eq('id', productId)
-        .single();
+    const itemsHtml = items
+      .map(
+        (item) =>
+          `<li>${item.product?.name || 'Item'} - Size: ${item.size} - Qty: ${item.quantity}</li>`
+      )
+      .join('');
 
-      if (product?.size_stock && product.size_stock[size] !== undefined) {
-        const newQty = Math.max(0, product.size_stock[size] - qty);
-        await supabase
-          .from('merchandise')
-          .update({
-            size_stock: { ...product.size_stock, [size]: newQty },
-          })
-          .eq('id', productId);
-      }
-    }
+    const emailSent = await sendEmail({
+      to: email,
+      subject: 'Your Tarana Merchandise Order is Confirmed',
+      html: `
+        <h2>Order Confirmed</h2>
+        <p>Hi ${fullName}, your order has been received successfully.</p>
+        <p><strong>Total:</strong> Rs. ${calculatedTotal.toFixed(2)}</p>
+        <ul>${itemsHtml}</ul>
+        <p>Shipping will be done via India Post.</p>
+      `,
+    });
 
-    if (process.env.RESEND_API_KEY) {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const adminEmail = process.env.ADMIN_EMAIL || 'noreply@resend.dev';
-
-      const itemsHtml = items
-        .map(
-          (item) =>
-            `<li>${item.product?.name || 'Item'} - Size: ${item.size} - Qty: ${item.quantity}</li>`
-        )
-        .join('');
-
-      await resend.emails.send({
-        from: 'Tarana Band <onboarding@resend.dev>',
-        to: email,
-        subject: 'Your Tarana Merchandise Order is Confirmed',
-        html: `
-          <h2>Order Confirmed</h2>
-          <p>Hi ${fullName}, your order has been received successfully.</p>
-          <p><strong>Total:</strong> Rs. ${totalAmount.toFixed(2)}</p>
-          <ul>${itemsHtml}</ul>
-          <p>Shipping will be done via India Post.</p>
-        `,
-      });
-
-      await resend.emails.send({
-        from: 'Tarana Band <onboarding@resend.dev>',
-        to: adminEmail,
+    if (process.env.ADMIN_EMAIL) {
+      await sendEmail({
+        to: process.env.ADMIN_EMAIL,
         subject: `New Merch Order - ${fullName}`,
         html: `
           <h2>New Merch Order</h2>
@@ -140,14 +186,14 @@ export async function POST(request: NextRequest) {
           <p><strong>Phone:</strong> ${phone}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Address:</strong> ${addressLine1}, ${addressLine2}, ${city}, ${state} - ${pincode}</p>
-          <p><strong>Total:</strong> Rs. ${totalAmount.toFixed(2)}</p>
+          <p><strong>Total:</strong> Rs. ${calculatedTotal.toFixed(2)}</p>
           <ul>${itemsHtml}</ul>
           <p><a href="${paymentProofUrl}">View Payment Proof</a></p>
         `,
       });
     }
 
-    return NextResponse.json({ success: true, message: 'Order placed successfully.' });
+    return NextResponse.json({ success: true, emailSent, message: 'Order placed successfully.' });
   } catch (error) {
     console.error('Merch order error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });

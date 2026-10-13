@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ProductCard from './ProductCard';
 import { supabase } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
+import { validateProofImage } from '@/lib/uploads';
 
 interface SizeStock {
   [size: string]: number;
@@ -190,6 +191,11 @@ export default function MerchStore() {
       alert('Please upload payment proof screenshot before checkout.');
       return;
     }
+    const proofError = validateProofImage(paymentProof);
+    if (proofError) {
+      setCheckoutMessage(proofError);
+      return;
+    }
 
     trackEvent('begin_checkout', {
       currency: 'INR',
@@ -227,7 +233,11 @@ export default function MerchStore() {
         value: totalAmount,
         items: cart.map(i => ({ item_id: i.product.id, item_name: i.product.name, item_variant: i.size, price: i.product.price, quantity: i.quantity })),
       });
-      setCheckoutMessage('Order confirmed! A confirmation email has been sent.');
+      setCheckoutMessage(
+        data.emailSent
+          ? 'Order confirmed! A confirmation email has been sent.'
+          : 'Order confirmed! We have received your order.'
+      );
       setCart([]);
       setPaymentProof(null);
       setFormData({

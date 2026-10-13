@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
+import { validateProofImage } from '@/lib/uploads';
 
 interface MerchOrder {
   id: string;
@@ -46,6 +47,8 @@ export default function AdminMerchOrdersPage() {
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [refundProof, setRefundProof] = useState<File | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   // Ship modal state
   const [shipOrderId, setShipOrderId] = useState<string | null>(null);
@@ -86,6 +89,13 @@ export default function AdminMerchOrdersPage() {
     { key: 'all',       label: 'All'       },
   ];
 
+  // The admin API routes need the logged-in admin's access token
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   const handleShip = async () => {
     if (!shipOrderId) return;
     setShipping(true);
@@ -93,7 +103,7 @@ export default function AdminMerchOrdersPage() {
     try {
       const res = await fetch('/api/admin/merch-order/ship', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ orderId: shipOrderId, trackingNumber, carrier }),
       });
       const data = await res.json();
@@ -112,7 +122,7 @@ export default function AdminMerchOrdersPage() {
             : o
         )
       );
-      setActionMessage('Order marked as shipped and customer notified.');
+      setActionMessage(data.message || 'Order marked as shipped.');
       setShipOrderId(null);
     } catch (err: any) {
       setActionMessage(err?.message || 'Failed to mark as shipped.');
@@ -236,7 +246,7 @@ export default function AdminMerchOrdersPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setRefundProof(null); }}
+                      onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setRefundProof(null); setCancelError(''); }}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-semibold"
                     >
                       Cancel Order
@@ -247,7 +257,7 @@ export default function AdminMerchOrdersPage() {
                   <div className="mt-4">
                     <button
                       type="button"
-                      onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setRefundProof(null); }}
+                      onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setRefundProof(null); setCancelError(''); }}
                       className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-semibold"
                     >
                       Cancel Order
@@ -327,16 +337,26 @@ export default function AdminMerchOrdersPage() {
                 className="w-full text-sm text-gray-300"
               />
             </div>
+            {cancelError && (
+              <p className="text-sm text-red-400">{cancelError}</p>
+            )}
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={async () => {
                   if (!refundProof) {
-                    setActionMessage('Refund proof is required.');
+                    setCancelError('Refund proof is required.');
                     return;
                   }
+                  const proofError = validateProofImage(refundProof);
+                  if (proofError) {
+                    setCancelError(proofError);
+                    return;
+                  }
+                  setCancelling(true);
+                  setCancelError('');
                   try {
-                    setActionMessage('Cancelling order...');
+                    setActionMessage('');
                     const payload = new FormData();
                     payload.append('orderId', cancelOrderId);
                     payload.append('reason', cancelReason);
@@ -344,6 +364,7 @@ export default function AdminMerchOrdersPage() {
 
                     const res = await fetch('/api/admin/merch-order/cancel', {
                       method: 'POST',
+                      headers: await getAuthHeaders(),
                       body: payload,
                     });
                     const data = await res.json();
@@ -361,15 +382,18 @@ export default function AdminMerchOrdersPage() {
                           : o
                       )
                     );
-                    setActionMessage('Order cancelled and email sent.');
+                    setActionMessage(data.message || 'Order cancelled.');
                     setCancelOrderId(null);
                   } catch (err: any) {
-                    setActionMessage(err?.message || 'Failed to cancel order.');
+                    setCancelError(err?.message || 'Failed to cancel order.');
+                  } finally {
+                    setCancelling(false);
                   }
                 }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold"
+                disabled={cancelling}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded font-semibold"
               >
-                Confirm Cancel
+                {cancelling ? 'Cancelling...' : 'Confirm Cancel'}
               </button>
               <button
                 type="button"

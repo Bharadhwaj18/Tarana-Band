@@ -65,7 +65,6 @@ export default function VideosPage() {
           console.error('Error fetching videos:', videosError);
           setVideos([]);
         } else {
-          console.log('Videos fetched successfully:', videosData);
           setVideos(videosData || []);
         }
       } catch (error) {

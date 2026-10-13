@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { requireAdmin } from '@/lib/adminAuth';
+import { sendEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin(request);
+    if (authError) return authError;
+
     const { orderId, trackingNumber, carrier } = await request.json();
 
     if (!orderId) {
@@ -51,42 +55,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Order update failed: ${updateError.message}` }, { status: 500 });
     }
 
-    if (process.env.RESEND_API_KEY && order.email) {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const itemsList = (order.items || [])
-        .map((item: any) =>
-          `<li>${item.product?.name || 'Item'} — Size: ${item.size} × ${item.quantity}</li>`
-        )
-        .join('');
+    const itemsList = (order.items || [])
+      .map((item: any) =>
+        `<li>${item.product?.name || 'Item'} — Size: ${item.size} × ${item.quantity}</li>`
+      )
+      .join('');
 
-      const trackingBlock =
-        trackingNumber || carrier
-          ? `
-            <div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:6px;">
-              <strong>Shipment Details</strong><br/>
-              ${carrier ? `Carrier: ${carrier}<br/>` : ''}
-              ${trackingNumber ? `Tracking Number: <strong>${trackingNumber}</strong>` : ''}
-            </div>`
-          : '';
+    const trackingBlock =
+      trackingNumber || carrier
+        ? `
+          <div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:6px;">
+            <strong>Shipment Details</strong><br/>
+            ${carrier ? `Carrier: ${carrier}<br/>` : ''}
+            ${trackingNumber ? `Tracking Number: <strong>${trackingNumber}</strong>` : ''}
+          </div>`
+        : '';
 
-      await resend.emails.send({
-        from: 'Tarana Band <onboarding@resend.dev>',
-        to: order.email,
-        subject: 'Your Tarana Merch Order Has Been Shipped!',
-        html: `
-          <h2>Your order is on its way!</h2>
-          <p>Hello ${order.customer_name || 'Customer'},</p>
-          <p>Great news — your Tarana merchandise order has been shipped.</p>
-          <p><strong>Items Shipped:</strong></p>
-          <ul>${itemsList}</ul>
-          ${trackingBlock}
-          <p style="margin-top:16px;">If you have any questions about your order, please reply to this email.</p>
-          <p>Thank you for supporting Tarana!</p>
-        `,
-      });
-    }
+    const emailSent = await sendEmail({
+      to: order.email,
+      subject: 'Your Tarana Merch Order Has Been Shipped!',
+      html: `
+        <h2>Your order is on its way!</h2>
+        <p>Hello ${order.customer_name || 'Customer'},</p>
+        <p>Great news — your Tarana merchandise order has been shipped.</p>
+        <p><strong>Items Shipped:</strong></p>
+        <ul>${itemsList}</ul>
+        ${trackingBlock}
+        <p style="margin-top:16px;">If you have any questions about your order, please reply to this email.</p>
+        <p>Thank you for supporting Tarana!</p>
+      `,
+    });
 
-    return NextResponse.json({ success: true, message: 'Order marked as shipped and email sent.' });
+    return NextResponse.json({
+      success: true,
+      emailSent,
+      message: emailSent
+        ? 'Order marked as shipped and customer notified.'
+        : 'Order marked as shipped, but the email to the customer could not be sent.',
+    });
   } catch (error) {
     console.error('Ship merch order error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
