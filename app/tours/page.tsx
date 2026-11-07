@@ -2,8 +2,29 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import TourTicketButton from '@/components/TourTicketButton';
 import { getTourStatus } from '@/lib/tours';
+import { SHARE_IMAGE } from '@/lib/seo';
+import type { Metadata } from 'next';
 
 export const revalidate = 60; // Revalidate every 60 seconds (ISR)
+
+const description = 'Upcoming Tarana shows and tour dates, with tickets. Catch the band live on stage.';
+
+export const metadata: Metadata = {
+  title: 'Tour Dates',
+  description,
+  alternates: { canonical: '/tours' },
+  openGraph: {
+    title: 'Tour Dates | Tarana',
+    description,
+    url: 'https://taranaband.in/tours',
+    images: [SHARE_IMAGE],
+  },
+  twitter: {
+    title: 'Tour Dates | Tarana',
+    description,
+    images: [SHARE_IMAGE.url],
+  },
+};
 
 interface Tour {
   id: string;

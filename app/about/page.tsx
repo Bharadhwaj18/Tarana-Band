@@ -36,8 +36,8 @@ export default function AboutPage() {
     ]
   });
 
-  // Load config - don't show anything until it's ready
-  const { navConfig, isLoaded } = useConfigLoader();
+  // Config fills in as it loads; the page renders straight away with defaults
+  const { navConfig } = useConfigLoader();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,10 +84,7 @@ export default function AboutPage() {
 
   return (
     <main className="bg-black">
-      {!isLoaded ? (
-        <div className="min-h-screen bg-black" />
-      ) : (
-        <>
+      <>
           <Navigation config={navConfig} />
 
       {/* Hero Section with Gold Accent */}
@@ -213,8 +210,7 @@ export default function AboutPage() {
       )}
 
       <Footer />
-        </>
-      )}
+      </>
     </main>
   );
 }

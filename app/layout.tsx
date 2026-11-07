@@ -1,24 +1,54 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
-import FaviconSetter from "@/components/FaviconSetter";
 import FontSetter from "@/components/FontSetter";
 import ColorSetter from "@/components/ColorSetter";
 import AppConfigProvider from "@/components/AppConfigProvider";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIAL_PROFILES } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Tarana",
-  description: "Official website of Tarana rock band. Tours, merch, videos, and more.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} | Classical Roots, Rock Energy`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Tarana",
-    description: "Official website of Tarana the band.",
-    url: "https://taranaband.in",
+    title: `${SITE_NAME} | Classical Roots, Rock Energy`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: "website",
+    locale: "en_IN",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} | Classical Roots, Rock Energy`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+// Structured data so Google knows this is the band's own site and links it to the band's profiles
+const bandSchema = {
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  genre: ["Rock"],
+  sameAs: SOCIAL_PROFILES,
 };
 
 export default function RootLayout({
@@ -36,6 +66,10 @@ export default function RootLayout({
         {/* Favicon with cache busting */}
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(bandSchema) }}
+        />
       </head>
       <body className="font-body">
         {process.env.NEXT_PUBLIC_GA_ID && (
@@ -54,7 +88,6 @@ export default function RootLayout({
         )}
         <AppConfigProvider>
           <AnalyticsProvider />
-          <FaviconSetter />
           <FontSetter />
           <ColorSetter />
           {children}
@@ -63,4 +96,3 @@ export default function RootLayout({
     </html>
   );
 }
-

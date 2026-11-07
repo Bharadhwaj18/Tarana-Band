@@ -83,18 +83,20 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
       <div className="container-custom flex justify-between items-center py-2">
         {/* Logo or Brand */}
         <Link href="/">
+          {/* The nav always sits on a dark background, so it always uses the white logo.
+              The black logo is for light backgrounds such as the browser tab icon. */}
           {isOverlay && isScrolled ? (
-            // Show black logo when scrolled (dark background) - SMALL SIZE
-            resolvedConfig?.logo_black && (
+            // Scrolled overlay: dark background - SMALL SIZE
+            resolvedConfig?.logo_white && (
               <img
-                src={resolvedConfig.logo_black}
+                src={resolvedConfig.logo_white}
                 alt="TARANA Logo"
                 className={`h-14 object-contain`}
                 title="TARANA"
               />
             )
           ) : isOverlay && !isScrolled ? (
-            // Show white logo when at top (transparent background) - SMALL SIZE
+            // Top overlay: transparent over the hero video - SMALL SIZE
             resolvedConfig?.logo_white && (
               <img
                 src={resolvedConfig.logo_white}
@@ -104,10 +106,10 @@ export default function Navigation({ isOverlay = false, config }: NavigationProp
               />
             )
           ) : (
-            // For non-overlay navigation, use black logo - SMALL SIZE
-            resolvedConfig?.logo_black && (
+            // Non-overlay navigation: black bar - SMALL SIZE
+            resolvedConfig?.logo_white && (
               <img
-                src={resolvedConfig.logo_black}
+                src={resolvedConfig.logo_white}
                 alt="TARANA Logo"
                 className={`h-16 object-contain`}
                 title="TARANA"

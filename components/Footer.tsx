@@ -7,7 +7,8 @@ export default function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const { navConfig, socialConfig } = useAppConfig();
-  const logoBlack = navConfig.logo_black || '';
+  // Footer is on a black background, so it uses the white logo
+  const logoWhite = navConfig.logo_white || '';
   const socialLinks = socialConfig.social_links || [];
 
   return (
@@ -16,9 +17,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div>
-            {logoBlack && (
+            {logoWhite && (
               <img
-                src={logoBlack}
+                src={logoWhite}
                 alt="TARANA Logo"
                 className="h-48 object-contain mb-4"
               />
