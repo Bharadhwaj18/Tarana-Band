@@ -37,6 +37,9 @@ export default function Navigation({ config }: NavigationProps) {
   // A tab only shows once its flag has loaded and is on, so hidden pages never flash in
   const items = NAV_ITEMS.filter((item) => resolved[item.configKey] === true);
   const showMerch = resolved.show_merch === true;
+  const showContact = resolved.show_contact === true;
+  // On desktop, Contact is a button rather than a text link so it's easy to spot
+  const desktopItems = items.filter((item) => item.href !== '/contact');
 
   useEffect(() => {
     setIsOpen(false);
@@ -49,14 +52,14 @@ export default function Navigation({ config }: NavigationProps) {
       <div className="gp-container flex items-center justify-between gap-4 py-3">
         <Link href="/" aria-label="Tarana home" className="flex items-center min-h-[44px]">
           {resolved.logo_black ? (
-            <img src={resolved.logo_black} alt="Tarana" className="h-12 sm:h-14 w-auto" />
+            <img src={resolved.logo_black} alt="Tarana" className="h-16 sm:h-20 w-auto" />
           ) : (
             <span className="gp-display text-3xl">Tarana</span>
           )}
         </Link>
 
         <nav aria-label="Main" className="hidden md:flex items-center gap-7 gp-mono text-sm font-bold uppercase">
-          {items.map((item) => (
+          {desktopItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -68,6 +71,15 @@ export default function Navigation({ config }: NavigationProps) {
               {item.label}
             </Link>
           ))}
+          {showContact && (
+            <Link
+              href="/contact"
+              aria-current={isActive('/contact') ? 'page' : undefined}
+              className={`gp-btn gp-btn-outline min-h-[44px] px-5 text-sm ${isActive('/contact') ? 'bg-ink text-paper' : ''}`}
+            >
+              Contact us
+            </Link>
+          )}
           {showMerch && (
             <Link
               href="/merch"
@@ -79,15 +91,22 @@ export default function Navigation({ config }: NavigationProps) {
           )}
         </nav>
 
+        <div className="md:hidden flex items-center gap-2">
+          {showContact && pathname !== '/contact' && (
+            <Link href="/contact" className="gp-btn gp-btn-outline min-h-[44px] px-3 gp-mono text-sm uppercase">
+              Contact
+            </Link>
+          )}
         <button
           type="button"
-          className="md:hidden gp-btn gp-btn-ink min-h-[44px] px-4 gp-mono text-sm uppercase"
+          className="gp-btn gp-btn-ink min-h-[44px] px-4 gp-mono text-sm uppercase"
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           aria-controls="mobile-menu"
         >
           {isOpen ? 'Close' : 'Menu'}
         </button>
+        </div>
       </div>
 
       {isOpen && (

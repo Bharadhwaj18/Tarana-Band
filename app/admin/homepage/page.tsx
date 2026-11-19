@@ -40,7 +40,7 @@ export default function AdminHomepagePage() {
   const [showsPlayed, setShowsPlayed] = useState(0);
   const [fans, setFans] = useState(0);
   const [yearsActive, setYearsActive] = useState(0);
-  const [albums, setAlbums] = useState(0);
+  const [tracksReleased, setTracksReleased] = useState(8);
 
   // Music Embed
   const [musicType, setMusicType] = useState<'spotify' | 'youtube'>('spotify');
@@ -110,7 +110,7 @@ export default function AdminHomepagePage() {
               setShowsPlayed(content.shows_played ?? 0);
               setFans(content.fans ?? 0);
               setYearsActive(content.years_active ?? 0);
-              setAlbums(content.albums ?? 0);
+              setTracksReleased(content.tracks_released ?? 8);
               break;
             case 'music_embed':
               setMusicType(content.type || 'spotify');
@@ -268,7 +268,7 @@ export default function AdminHomepagePage() {
             shows_played: showsPlayed,
             fans: fans,
             years_active: yearsActive,
-            albums: albums,
+            tracks_released: tracksReleased,
           },
         },
         {
@@ -471,11 +471,11 @@ export default function AdminHomepagePage() {
                 />
               </div>
               <div>
-                <label className="block text-gray-300 mb-2">Albums</label>
+                <label className="block text-gray-300 mb-2">Tracks released</label>
                 <input
                   type="number"
-                  value={albums}
-                  onChange={(e) => setAlbums(Number(e.target.value))}
+                  value={tracksReleased}
+                  onChange={(e) => setTracksReleased(Number(e.target.value))}
                   className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none"
                 />
               </div>

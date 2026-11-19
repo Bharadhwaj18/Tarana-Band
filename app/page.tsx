@@ -31,7 +31,7 @@ interface HomepageConfig {
     shows_played: number;
     fans: number;
     years_active: number;
-    albums: number;
+    tracks_released?: number;
   };
   featured_photos?: {
     photos: GalleryPhoto[];
@@ -186,7 +186,9 @@ export default function Home() {
     hero.cta_link === '/about' && (!hero.cta_text || hero.cta_text.trim().toLowerCase() === 'view tours')
       ? 'About us'
       : hero.cta_text;
-  const stats = config.stats || { shows_played: 100, fans: 100000, years_active: 3, albums: 1 };
+  // Saved stats win; tracks_released falls back to 8 until it's saved from admin
+  const stats = { shows_played: 100, fans: 100000, years_active: 3, tracks_released: 8, ...(config.stats || {}) };
+  const tracksReleased = stats.tracks_released ?? 8;
   const musicEmbed = config.music_embed;
   const featuredPhotos = [...(config.featured_photos?.photos || [])].sort((a, b) => a.order - b.order);
 
@@ -202,7 +204,7 @@ export default function Home() {
     { value: `${stats.shows_played}+`, label: 'Shows played', show: stats.shows_played > 0 },
     { value: formatStreams(stats.fans), label: 'Streams across platforms', show: stats.fans > 0 },
     { value: `${stats.years_active}+`, label: 'Years rocking', show: stats.years_active > 0 },
-    { value: String(stats.albums).padStart(2, '0'), label: stats.albums === 1 ? 'Album released' : 'Albums released', show: stats.albums > 0, red: true },
+    { value: `${tracksReleased}`, label: 'Tracks released', show: tracksReleased > 0, red: true },
   ].filter((stat) => stat.show);
 
   // Gallery auto-advances every 5 seconds
@@ -298,7 +300,7 @@ export default function Home() {
         </div>
       </section>
 
-      <Ticker words={['Carnatic guitar', 'Carnatic flute', 'Hindustani vocals', 'Rock', 'Bengaluru']} />
+      <Ticker words={['Carnatic flute', 'Hindustani vocals', 'Rock', 'Bengaluru']} />
 
       {/* Stats */}
       {statItems.length > 0 && (
@@ -402,7 +404,7 @@ export default function Home() {
               <img
                 key={current.id}
                 src={getOptimizedSupabaseImageUrl(current.image_url)}
-                alt={current.title || 'Tarana live'}
+                alt={current.subtitle || 'Tarana performing live'}
                 className="w-full h-[56vh] sm:h-[520px] object-cover block"
                 fetchPriority="high"
                 decoding="async"
@@ -411,9 +413,10 @@ export default function Home() {
                   if (img.src !== current.image_url) img.src = current.image_url;
                 }}
               />
-              {(current.subtitle || current.title) && (
+              {/* Only the caption written in admin; photo titles are file names like "DSC05671" */}
+              {current.subtitle && (
                 <figcaption className="absolute left-0 bottom-0 bg-ink text-paper gp-mono text-sm font-bold uppercase px-4 py-2.5 max-w-full">
-                  {current.subtitle || current.title}
+                  {current.subtitle}
                 </figcaption>
               )}
             </figure>
