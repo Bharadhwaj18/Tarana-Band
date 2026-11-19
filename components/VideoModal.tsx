@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface VideoModalProps {
   video: {
@@ -15,7 +15,9 @@ interface VideoModalProps {
 }
 
 export default function VideoModal({ video, isOpen, onClose, getVideoEmbedUrl }: VideoModalProps) {
-  // Close modal on Escape key
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Close on Escape, lock page scroll and move focus into the player
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -24,77 +26,66 @@ export default function VideoModal({ video, isOpen, onClose, getVideoEmbedUrl }:
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
+      closeRef.current?.focus();
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
 
   if (!isOpen || !video) return null;
 
+  const embedUrl = video.video_type === 'self_hosted' ? '' : getVideoEmbedUrl(video);
+
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-ink/90 z-50 flex items-center justify-center p-3 sm:p-6"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={video.title}
+    >
       <div
-        className="bg-black rounded-lg overflow-hidden w-full max-w-6xl flex flex-col"
-        style={{ maxHeight: '90vh', height: '90vh' }}
+        className="bg-paper border-[3px] border-ink shadow-hard-red w-full max-w-6xl max-h-[92vh] flex flex-col font-archivo text-ink"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with close button */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-xl font-bold text-white truncate">{video.title}</h2>
+        <div className="flex items-center justify-between gap-4 px-4 sm:px-5 py-3 border-b-[3px] border-ink">
+          <h2 className="font-poster uppercase text-lg sm:text-2xl truncate">{video.title}</h2>
           <button
+            ref={closeRef}
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors ml-4 flex-shrink-0"
-            aria-label="Close"
+            className="gp-btn gp-btn-ink min-h-[44px] px-4 gp-mono text-sm uppercase flex-shrink-0"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            Close ✕
           </button>
         </div>
 
-        {/* Video Player */}
-        <div className="flex-1 min-h-0 bg-gray-900 overflow-hidden flex items-center justify-center">
-          <div className="w-full h-full" style={{ aspectRatio: '16/9' }}>
-            {video.video_type === 'self_hosted' ? (
-              <video
-                src={video.video_file_url}
-                controls
-                autoPlay
-                className="w-full h-full object-contain"
-                onError={(e) => console.error('Video playback error:', e)}
-              />
-            ) : (
-              (() => {
-                const embedUrl = getVideoEmbedUrl(video);
-                if (!embedUrl) {
-                  return (
-                    <div className="flex items-center justify-center text-red-400 w-full h-full">
-                      <p>Error loading video. Invalid URL.</p>
-                    </div>
-                  );
-                }
-                return (
-                  <iframe
-                    src={embedUrl}
-                    title={video.title}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                  />
-                );
-              })()
-            )}
-          </div>
+        <div className="bg-ink w-full aspect-video max-h-[70vh]">
+          {video.video_type === 'self_hosted' ? (
+            <video src={video.video_file_url} controls autoPlay className="w-full h-full object-contain" />
+          ) : embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title={video.title}
+              className="w-full h-full"
+              frameBorder="0"
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            />
+          ) : (
+            <div className="flex items-center justify-center text-paper w-full h-full gp-mono">
+              This video couldn&apos;t be loaded.
+            </div>
+          )}
         </div>
 
-        {/* Description */}
-        <div className="p-4 border-t border-gray-700 bg-gray-900 flex-shrink-0">
-          <p className="text-gray-300 text-sm">{video.description}</p>
-        </div>
+        {video.description && (
+          <div className="px-4 sm:px-5 py-4 overflow-y-auto">
+            <p className="text-[15px] leading-relaxed whitespace-pre-line">{video.description}</p>
+          </div>
+        )}
       </div>
     </div>
   );

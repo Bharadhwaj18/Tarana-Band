@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/adminAuth';
 import { sendEmail } from '@/lib/email';
+import { orderCancelledEmail } from '@/lib/emailTemplates';
 import { adjustStock } from '@/lib/merchStock';
 import { getProofExtension, validateProofImage } from '@/lib/uploads';
 
@@ -89,16 +90,7 @@ export async function POST(request: NextRequest) {
 
     const emailSent = await sendEmail({
       to: order.email,
-      subject: 'Your Tarana Merch Order Has Been Cancelled',
-      html: `
-        <h2>Order Cancelled</h2>
-        <p>Hello ${order.customer_name || 'Customer'},</p>
-        <p>Your merchandise order has been cancelled.</p>
-        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-        <p>We have processed your refund. You can view refund proof here:</p>
-        <p><a href="${refundProofUrl}">View Refund Proof</a></p>
-        <p>If you have any questions, please reply to this email.</p>
-      `,
+      ...orderCancelledEmail(order, reason || null, refundProofUrl),
     });
 
     return NextResponse.json({

@@ -17,11 +17,11 @@
 
 :root {
   --primary: #000000;
-  --secondary: #FFD700;
-  --accent: #1a5f3b;
-  --gold: #FFD700;
-  --gold-light: #FFED4E;
-  --gold-dark: #D4AF37;
+  --secondary: #D2281F;
+  --accent: #D2281F;
+  --gold: #D2281F;
+  --gold-light: #FF6A5E;
+  --gold-dark: #B3221A;
 }
 
 * {
@@ -35,8 +35,9 @@ html {
 }
 
 body {
-  background-color: var(--secondary);
-  color: var(--primary);
+  /* Fixed poster paper so no old theme colour (the gold) ever shows behind a page */
+  background-color: #F1ECE2;
+  color: #141414;
   font-family: 'Poppins', sans-serif;
 }
 
@@ -98,6 +99,319 @@ body {
 
 .animate-slide-out {
   animation: slideOut 0.5s ease-in forwards;
+}
+
+/* ---------- Gig Poster design (public site) ---------- */
+.gp {
+  background: #F1ECE2;
+  color: #141414;
+  font-family: 'Archivo', system-ui, sans-serif;
+}
+
+.gp-container {
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 4vw, 56px);
+}
+
+.gp-display {
+  font-family: 'Archivo Black', Impact, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.88;
+}
+
+.gp-mono {
+  font-family: 'Space Mono', ui-monospace, monospace;
+}
+
+.gp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 24px;
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.gp-btn:hover:not(:disabled) { transform: translate(-2px, -2px); }
+.gp-btn:disabled { cursor: not-allowed; }
+.gp-btn-ink { background: #141414; color: #F1ECE2; }
+.gp-btn-ink:hover:not(:disabled) { box-shadow: 4px 4px 0 #D2281F; }
+.gp-btn-red { background: #D2281F; color: #FFFFFF; }
+.gp-btn-red:hover:not(:disabled) { box-shadow: 4px 4px 0 #141414; }
+.gp-btn-paper { background: #F1ECE2; color: #141414; }
+.gp-btn-paper:hover:not(:disabled) { box-shadow: 4px 4px 0 #141414; }
+.gp-btn-outline { border: 3px solid currentColor; background: transparent; }
+.gp-btn-outline:hover:not(:disabled) { box-shadow: 4px 4px 0 currentColor; }
+
+.gp-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.gp-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 2px solid #141414;
+  background: #F1ECE2;
+  color: #141414;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  text-transform: none;
+  border-radius: 0;
+}
+.gp-input:focus { outline: 3px solid #D2281F; outline-offset: 0; }
+.gp-input[aria-invalid="true"] { border: 3px solid #D2281F; background: #FFF4F2; }
+
+.gp a:focus-visible,
+.gp button:focus-visible {
+  outline: 3px solid #D2281F;
+  outline-offset: 3px;
+}
+
+@keyframes gp-tick {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.gp-tick { display: inline-block; animation: gp-tick 35s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-tick { animation: none; }
+  .gp-btn:hover:not(:disabled) { transform: none; }
+}
+
+/* ---------- Admin "Backstage" skin ----------
+   The admin pages were built with a dark Tailwind theme. Rather than rewrite every form,
+   these rules restyle those utility classes inside the admin content area in the poster look.
+   Scoped to .admin-skin main so the sidebar and public site are untouched. */
+.admin-skin main { font-family: 'Archivo', system-ui, sans-serif; color: #141414; }
+.admin-skin main [class*="rounded"]:not(.rounded-full) { border-radius: 0 !important; }
+.admin-skin main .shadow,
+.admin-skin main .shadow-sm,
+.admin-skin main .shadow-md,
+.admin-skin main .shadow-lg,
+.admin-skin main .shadow-xl,
+.admin-skin main .shadow-2xl { box-shadow: none; }
+
+/* Surfaces */
+.admin-skin main .bg-gray-900,
+.admin-skin main .bg-gray-700 { background-color: #F1ECE2; }
+.admin-skin main .bg-gray-800 { background-color: #FFFFFF; border: 3px solid #141414; }
+.admin-skin main .bg-gray-600 { background-color: #E2DCD0; }
+.admin-skin main .hover\:bg-gray-500:hover,
+.admin-skin main .hover\:bg-gray-600:hover,
+.admin-skin main .hover\:bg-gray-700:hover,
+.admin-skin main .hover\:bg-gray-750:hover,
+.admin-skin main .hover\:bg-gray-800:hover,
+.admin-skin main .hover\:bg-gray-700\/30:hover { background-color: #E2DCD0; }
+
+/* Borders */
+.admin-skin main .border-gray-500,
+.admin-skin main .border-gray-600,
+.admin-skin main .border-gray-700 { border-color: #141414; }
+.admin-skin main .border-gray-800 { border-color: #CFC8BA; }
+.admin-skin main .border-gold { border-color: #D2281F; }
+.admin-skin main .focus\:border-gold:focus { border-color: #D2281F; }
+.admin-skin main .hover\:border-gold:hover { border-color: #D2281F; }
+
+/* Text */
+.admin-skin main .text-white:not([class*="bg-poster"]):not([class*="bg-ink"]):not([class*="bg-red-"]):not([class*="bg-blue-"]):not([class*="bg-green-"]),
+.admin-skin main .text-gray-300,
+.admin-skin main .text-gold,
+.admin-skin main .text-gold-light,
+.admin-skin main .hover\:text-white:hover { color: #141414; }
+.admin-skin main .text-gray-400,
+.admin-skin main .text-gray-500,
+.admin-skin main .text-gray-600 { color: #6B665C; }
+.admin-skin main .hover\:text-gold:hover,
+.admin-skin main .hover\:text-gold-light:hover { color: #B3221A; }
+.admin-skin main .text-red-200,
+.admin-skin main .text-red-300,
+.admin-skin main .text-red-400,
+.admin-skin main .hover\:text-red-300:hover { color: #B3221A; }
+.admin-skin main .text-green-200,
+.admin-skin main .text-green-300,
+.admin-skin main .text-green-400,
+.admin-skin main .hover\:text-green-300:hover { color: #1F6B35; }
+.admin-skin main .text-blue-300,
+.admin-skin main .text-blue-400,
+.admin-skin main .hover\:text-blue-300:hover { color: #1F4FA8; }
+.admin-skin main .text-yellow-300,
+.admin-skin main .text-yellow-400 { color: #B3221A; }
+
+/* Soft status panels and badges */
+.admin-skin main .bg-red-900\/30,
+.admin-skin main .bg-red-900\/50 { background-color: #FFF4F2; border-color: #D2281F; }
+.admin-skin main .bg-green-900\/30,
+.admin-skin main .bg-green-900\/50 { background-color: #EAF5EC; border-color: #1F6B35; }
+.admin-skin main .bg-yellow-900\/50 { background-color: #FFF4F2; }
+.admin-skin main .bg-blue-900\/50 { background-color: #E6EEFB; }
+
+/* Buttons: gold becomes ink, coloured buttons become poster red / ink */
+.admin-skin main .bg-gold { background-color: #141414; }
+.admin-skin main .bg-gold,
+.admin-skin main .bg-gold * { color: #F1ECE2 !important; }
+.admin-skin main .hover\:bg-gold:hover,
+.admin-skin main .hover\:bg-gold-light:hover { background-color: #D2281F; color: #FFFFFF; }
+.admin-skin main .bg-red-600,
+.admin-skin main .bg-red-700 { background-color: #D2281F; }
+.admin-skin main .hover\:bg-red-700:hover { background-color: #B3221A; }
+.admin-skin main .bg-blue-600 { background-color: #141414; }
+.admin-skin main .hover\:bg-blue-700:hover { background-color: #333333; }
+.admin-skin main .bg-red-600,
+.admin-skin main .bg-red-700,
+.admin-skin main .bg-blue-600,
+.admin-skin main .bg-red-600 *,
+.admin-skin main .bg-blue-600 * { color: #FFFFFF; }
+.admin-skin main button,
+.admin-skin main a[class*="bg-"] { font-weight: 700; }
+
+/* Labels sitting on dark photo overlays stay white */
+.admin-skin main .absolute[class*="bg-black"],
+.admin-skin main .absolute[class*="bg-black"] *,
+.admin-skin main .absolute[class*="from-black"],
+.admin-skin main .absolute[class*="from-black"] * { color: #FFFFFF; }
+
+/* Type */
+.admin-skin main h1 {
+  font-family: 'Archivo Black', Impact, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+  font-size: clamp(40px, 5vw, 64px);
+  font-weight: 400;
+}
+.admin-skin main h2 {
+  font-family: 'Archivo Black', Impact, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+}
+.admin-skin main label.block,
+.admin-skin main th {
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #141414;
+}
+
+/* Form fields */
+.admin-skin main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+.admin-skin main select,
+.admin-skin main textarea {
+  background-color: #FFFFFF;
+  border: 2px solid #141414;
+  color: #141414;
+  border-radius: 0;
+}
+.admin-skin main input:focus,
+.admin-skin main select:focus,
+.admin-skin main textarea:focus { outline: 3px solid #D2281F; outline-offset: 0; }
+.admin-skin main input[type="checkbox"] { accent-color: #D2281F; width: 18px; height: 18px; }
+
+/* Tables */
+.admin-skin main table { border-collapse: collapse; }
+.admin-skin main thead { background-color: #F1ECE2; border-bottom: 2px solid #141414; }
+.admin-skin main tbody tr { border-color: #CFC8BA; }
+
+/* ---------- First-visit intro ---------- */
+.gp-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #D2281F;
+  cursor: pointer;
+  animation: gp-intro-wipe 0.55s cubic-bezier(0.7, 0, 0.3, 1) 2.2s forwards;
+}
+.gp-intro-ink {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #141414;
+  animation: gp-intro-wipe 0.55s cubic-bezier(0.7, 0, 0.3, 1) 2.05s forwards;
+}
+.gp-intro-done .gp-intro { display: none; }
+.gp-intro-playing { overflow: hidden; }
+.gp-intro-skip .gp-intro,
+.gp-intro-skip .gp-intro-ink {
+  animation: gp-intro-wipe 0.4s cubic-bezier(0.7, 0, 0.3, 1) forwards !important;
+}
+.gp-intro-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(78vmin, 640px);
+  height: min(78vmin, 640px);
+  margin: calc(min(78vmin, 640px) / -2) 0 0 calc(min(78vmin, 640px) / -2);
+  border: 3px dashed rgba(210, 40, 31, 0.75);
+  border-radius: 50%;
+  animation: gp-intro-ring-in 0.8s ease-out both, gp-intro-spin 14s linear infinite;
+}
+.gp-intro-glyph {
+  position: absolute;
+  color: #F1ECE2;
+  font-family: 'Archivo Black', 'Noto Sans Kannada', 'Noto Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Telugu', 'Noto Sans Malayalam', 'Nirmala UI', sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  animation-name: gp-intro-float;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  pointer-events: none;
+  user-select: none;
+}
+.gp-intro-red { color: #FF6A5E; }
+.gp-intro-faint { color: rgba(241, 236, 226, 0.6); }
+.gp-intro-faint.gp-intro-red { color: rgba(255, 106, 94, 0.7); }
+.gp-intro-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.gp-intro-logo {
+  width: clamp(150px, 26vw, 260px);
+  height: auto;
+  animation: gp-intro-logo-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3) 0.25s both, gp-intro-pulse 1.3s ease-in-out 0.95s infinite;
+}
+.gp-intro-tag {
+  font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #F1ECE2;
+  animation: gp-intro-tag-in 0.5s ease-out 0.7s both;
+}
+
+@keyframes gp-intro-wipe { to { transform: translateY(-100%); visibility: hidden; } }
+@keyframes gp-intro-spin { to { rotate: 360deg; } }
+@keyframes gp-intro-ring-in { from { opacity: 0; scale: 0.6; } to { opacity: 1; scale: 1; } }
+@keyframes gp-intro-float {
+  0% { opacity: 0; transform: translateY(40px) scale(0.6) rotate(-8deg); }
+  35% { opacity: 0.85; }
+  100% { opacity: 0.55; transform: translateY(-30px) scale(1) rotate(6deg); }
+}
+@keyframes gp-intro-logo-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes gp-intro-pulse { 50% { filter: drop-shadow(0 0 18px rgba(210, 40, 31, 0.8)); } }
+@keyframes gp-intro-tag-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 0.85; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-intro { display: none; }
 }
 
 /* Secondary color hover states */

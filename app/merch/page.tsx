@@ -1,40 +1,46 @@
 'use client';
 
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import MerchStore from '@/components/MerchStore';
+import Ticker from '@/components/Ticker';
 
 export default function MerchPage() {
   return (
-    <main>
+    <main className="gp min-h-screen">
       <Navigation />
 
-      {/* Hero Section */}
-      <section className="bg-black text-white py-10 sm:py-12">
-        <div className="container-custom">
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold via-gold-light to-gold mb-6" style={{ color: 'var(--secondary)' }}>MERCHANDISE</h1>
-          <p className="text-lg sm:text-xl text-gray-300">
-            Support Tarana and get exclusive merchandise. Limited edition items available now.
-          </p>
+      <section className="gp-container pt-12 sm:pt-14 pb-10 flex flex-wrap justify-between items-end gap-6">
+        <div>
+          <p className="gp-mono text-sm uppercase mb-3">Official Tarana merch</p>
+          <h1 className="gp-display text-[clamp(72px,13vw,200px)] leading-[0.82]">
+            Merch<span className="text-poster">.</span>
+          </h1>
         </div>
+        <p className="max-w-[36ch] text-[17px] leading-relaxed">
+          Limited runs. Every rupee goes into touring and recording. Pay by UPI, card, netbanking or wallet.
+        </p>
       </section>
 
       <MerchStore />
 
-      {/* Info Section */}
-      <section className="py-10 sm:py-12 bg-black text-white border-t border-gray-700">
-        <div className="container-custom max-w-2xl">
-          <h2 className="heading-lg text-center mb-8">Support The Band</h2>
-          <p className="text-gray-300 text-center mb-6">
-            All proceeds from merchandise sales go directly to supporting Tarana's tour and
-            recording efforts. Your purchase helps us continue creating and performing music
-            you love.
-          </p>
-          <p className="text-gray-300 text-center">
-            Have merchandise requests? Get in touch with us!
-          </p>
+      <section className="bg-poster text-white">
+        <div className="gp-container py-16 sm:py-20 flex flex-wrap justify-between items-center gap-8">
+          <div className="flex-[1_1_480px] min-w-0">
+            <h2 className="gp-display text-[clamp(40px,5vw,72px)] mb-4">Support the band.</h2>
+            <p className="text-lg leading-relaxed max-w-[54ch]">
+              All proceeds from merchandise go directly into Tarana&apos;s touring and recording. Your purchase helps us
+              keep creating and performing the music you love.
+            </p>
+          </div>
+          <Link href="/contact" className="gp-btn gp-btn-ink">
+            Merch request? Tell us →
+          </Link>
         </div>
       </section>
+
+      <Ticker words={['Secure checkout via Razorpay', 'UPI', 'Cards', 'Netbanking', 'Wallets', 'Email updates on every order']} />
 
       <Footer />
     </main>

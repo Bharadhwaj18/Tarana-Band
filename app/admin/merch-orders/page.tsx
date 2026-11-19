@@ -18,7 +18,9 @@ interface MerchOrder {
   pincode: string;
   items: Array<{ product?: { name?: string }; size: string; quantity: number }>;
   total_amount: number;
-  payment_proof_url: string;
+  payment_proof_url?: string | null;
+  razorpay_payment_id?: string | null;
+  paid_at?: string | null;
   refund_proof_url?: string | null;
   cancellation_reason?: string | null;
   status: string;
@@ -28,12 +30,17 @@ interface MerchOrder {
   carrier?: string | null;
 }
 
-type Tab = 'confirmed' | 'shipped' | 'cancelled' | 'all';
+type Tab = 'confirmed' | 'shipped' | 'cancelled' | 'pending_payment' | 'all';
 
 const STATUS_BADGE: Record<string, string> = {
   confirmed: 'bg-yellow-900/50 text-yellow-300',
   shipped:   'bg-blue-900/50 text-blue-300',
   cancelled: 'bg-red-900/50 text-red-400',
+  pending_payment: 'bg-gray-700 text-gray-400',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending_payment: 'unpaid',
 };
 
 export default function AdminMerchOrdersPage() {
@@ -76,17 +83,22 @@ export default function AdminMerchOrdersPage() {
     run();
   }, [router]);
 
-  const filteredOrders =
-    activeTab === 'all' ? orders : orders.filter((o) => o.status === activeTab);
+  // Unpaid orders are checkouts where the customer never finished paying; keep them out of "All"
+  const ordersInTab = (tab: Tab) =>
+    tab === 'all'
+      ? orders.filter((o) => o.status !== 'pending_payment')
+      : orders.filter((o) => o.status === tab);
 
-  const tabCount = (tab: Tab) =>
-    tab === 'all' ? orders.length : orders.filter((o) => o.status === tab).length;
+  const filteredOrders = ordersInTab(activeTab);
+
+  const tabCount = (tab: Tab) => ordersInTab(tab).length;
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'confirmed', label: 'Confirmed' },
-    { key: 'shipped',   label: 'Shipped'   },
-    { key: 'cancelled', label: 'Cancelled' },
-    { key: 'all',       label: 'All'       },
+    { key: 'confirmed',       label: 'Confirmed' },
+    { key: 'shipped',         label: 'Shipped'   },
+    { key: 'cancelled',       label: 'Cancelled' },
+    { key: 'all',             label: 'All'       },
+    { key: 'pending_payment', label: 'Unpaid'    },
   ];
 
   // The admin API routes need the logged-in admin's access token
@@ -199,11 +211,16 @@ export default function AdminMerchOrdersPage() {
                 {/* Status row */}
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <span className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${STATUS_BADGE[order.status] || 'bg-gray-700 text-gray-300'}`}>
-                    {order.status}
+                    {STATUS_LABEL[order.status] || order.status}
                   </span>
                   <span className="text-xs text-gray-500">
                     {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
+                  {order.razorpay_payment_id && (
+                    <span className="text-sm text-green-400">
+                      Paid via Razorpay · <span className="font-mono">{order.razorpay_payment_id}</span>
+                    </span>
+                  )}
                   {order.payment_proof_url && (
                     <a href={order.payment_proof_url} target="_blank" rel="noopener noreferrer"
                       className="text-gold hover:text-gold-light text-sm underline">
@@ -240,16 +257,16 @@ export default function AdminMerchOrdersPage() {
                     <button
                       type="button"
                       onClick={() => { setShipOrderId(order.id); setTrackingNumber(''); setCarrier(''); }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold"
+                      className="gp-btn gp-btn-red min-h-[48px] px-5"
                     >
-                      Mark as Shipped
+                      Mark as shipped →
                     </button>
                     <button
                       type="button"
                       onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setRefundProof(null); setCancelError(''); }}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-semibold"
+                      className="gp-btn gp-btn-outline min-h-[48px] px-5"
                     >
-                      Cancel Order
+                      Cancel order
                     </button>
                   </div>
                 )}
@@ -258,9 +275,9 @@ export default function AdminMerchOrdersPage() {
                     <button
                       type="button"
                       onClick={() => { setCancelOrderId(order.id); setCancelReason(''); setRefundProof(null); setCancelError(''); }}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-semibold"
+                      className="gp-btn gp-btn-outline min-h-[48px] px-5"
                     >
-                      Cancel Order
+                      Cancel order
                     </button>
                   </div>
                 )}

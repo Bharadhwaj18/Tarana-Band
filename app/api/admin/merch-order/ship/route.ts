@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/adminAuth';
 import { sendEmail } from '@/lib/email';
+import { orderShippedEmail } from '@/lib/emailTemplates';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,35 +56,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Order update failed: ${updateError.message}` }, { status: 500 });
     }
 
-    const itemsList = (order.items || [])
-      .map((item: any) =>
-        `<li>${item.product?.name || 'Item'} — Size: ${item.size} × ${item.quantity}</li>`
-      )
-      .join('');
-
-    const trackingBlock =
-      trackingNumber || carrier
-        ? `
-          <div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:6px;">
-            <strong>Shipment Details</strong><br/>
-            ${carrier ? `Carrier: ${carrier}<br/>` : ''}
-            ${trackingNumber ? `Tracking Number: <strong>${trackingNumber}</strong>` : ''}
-          </div>`
-        : '';
-
     const emailSent = await sendEmail({
       to: order.email,
-      subject: 'Your Tarana Merch Order Has Been Shipped!',
-      html: `
-        <h2>Your order is on its way!</h2>
-        <p>Hello ${order.customer_name || 'Customer'},</p>
-        <p>Great news — your Tarana merchandise order has been shipped.</p>
-        <p><strong>Items Shipped:</strong></p>
-        <ul>${itemsList}</ul>
-        ${trackingBlock}
-        <p style="margin-top:16px;">If you have any questions about your order, please reply to this email.</p>
-        <p>Thank you for supporting Tarana!</p>
-      `,
+      ...orderShippedEmail(order, carrier || null, trackingNumber || null),
     });
 
     return NextResponse.json({

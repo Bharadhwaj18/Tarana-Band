@@ -25,7 +25,7 @@ export default function ColorSetter() {
         if (data && data.length > 0) {
           const colorConfig = data[0].content;
           const primaryColor = colorConfig.primary_color || '#000000';
-          const secondaryColor = colorConfig.secondary_color || '#FFD700';
+          const secondaryColor = colorConfig.secondary_color || '#D2281F';
           const accentColor = colorConfig.accent_color || '#1a5f3b';
 
           // Apply colors via CSS variables

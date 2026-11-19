@@ -38,7 +38,7 @@ export default function AdminSettingsPage() {
 
   // Colors
   const [primaryColor, setPrimaryColor] = useState('#000000');
-  const [secondaryColor, setSecondaryColor] = useState('#FFD700');
+  const [secondaryColor, setSecondaryColor] = useState('#D2281F');
   const [accentColor, setAccentColor] = useState('#1a5f3b');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [newSocialPlatform, setNewSocialPlatform] = useState('');
@@ -102,7 +102,7 @@ export default function AdminSettingsPage() {
               break;
             case 'colors':
               setPrimaryColor(content.primary_color || '#000000');
-              setSecondaryColor(content.secondary_color || '#FFD700');
+              setSecondaryColor(content.secondary_color || '#D2281F');
               setAccentColor(content.accent_color || '#1a5f3b');
               break;
             case 'social':

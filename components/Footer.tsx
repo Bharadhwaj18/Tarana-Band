@@ -1,140 +1,90 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useAppConfig } from './AppConfigProvider';
 
+export const CONTACT_EMAIL = 'taranabandinfo@gmail.com';
+export const CONTACT_PHONE = '+91 94495 62419';
+export const CONTACT_PHONE_HREF = 'tel:+919449562419';
+
 export default function Footer() {
-  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const { navConfig, socialConfig } = useAppConfig();
-  // Footer is on a black background, so it uses the white logo
   const logoWhite = navConfig.logo_white || '';
   const socialLinks = socialConfig.social_links || [];
 
+  const siteLinks = [
+    { href: '/', label: 'Home', show: true },
+    { href: '/about', label: 'About', show: navConfig.show_about !== false },
+    { href: '/tours', label: 'Shows', show: navConfig.show_tours !== false },
+    { href: '/videos', label: 'Videos', show: navConfig.show_videos !== false },
+    { href: '/merch', label: 'Merch', show: navConfig.show_merch !== false },
+    { href: '/contact', label: 'Contact', show: navConfig.show_contact !== false },
+  ].filter((link) => link.show);
+
   return (
-    <footer className="bg-black text-white py-8">
-      <div className="container-custom">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          {/* Brand */}
-          <div>
-            {logoWhite && (
-              <img
-                src={logoWhite}
-                alt="TARANA Logo"
-                className="h-48 object-contain mb-4"
-              />
+    <footer className="bg-ink text-paper font-archivo">
+      <div className="gp-container pt-16 sm:pt-20 pb-10 flex flex-wrap gap-12 justify-between">
+        <div className="flex-[1_1_420px] min-w-0">
+          <h2 className="gp-display text-[clamp(44px,5.5vw,72px)] mb-6">
+            Stay
+            <br />
+            connected.
+          </h2>
+          <p className="text-[17px] leading-relaxed text-[#D6D0C4] max-w-[40ch] mb-6">
+            Bookings, collabs or just a hello. Early tickets and behind-the-scenes on Instagram.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {navConfig.show_contact !== false && (
+              <Link href="/contact" className="gp-btn gp-btn-red">
+                Get in touch →
+              </Link>
             )}
-            <p className="text-gray-400">Official website of Tarana the band.</p>
-          </div>
-
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-gray-400">
-              {pathname !== '/' && (
-                <li>
-                  <a href="/" className="hover:text-white transition">
-                    Home
-                  </a>
-                </li>
-              )}
-              {(navConfig.show_about !== false) && (
-                <li>
-                  <a href="/about" className="hover:text-white transition">
-                    About Us
-                  </a>
-                </li>
-              )}
-              {(navConfig.show_tours !== false) && (
-                <li>
-                  <a href="/tours" className="hover:text-white transition">
-                    Tours
-                  </a>
-                </li>
-              )}
-              {(navConfig.show_merch !== false) && (
-                <li>
-                  <a href="/merch" className="hover:text-white transition">
-                    Merchandise
-                  </a>
-                </li>
-              )}
-              {(navConfig.show_videos !== false) && (
-                <li>
-                  <a href="/videos" className="hover:text-white transition">
-                    Videos
-                  </a>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Contact</h4>
-            <ul className="space-y-2 text-gray-400">
-              {(navConfig.show_contact !== false) && (
-                <li>
-                  <a href="/contact" className="hover:text-white transition">
-                    Contact Form
-                  </a>
-                </li>
-              )}
-              <li>
-                <a href="mailto:taranabandinfo@gmail.com" className="hover:text-white transition">
-                  Email
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Social Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Follow Us</h4>
-            <div className="flex gap-4 flex-wrap">
-              {socialLinks.length > 0 ? (
-                socialLinks.map((link, index) => (
-                  <a
-                    key={index}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-gold transition font-medium text-sm"
-                    aria-label={link.platform}
-                  >
-                    {link.platform}
-                  </a>
-                ))
-              ) : (
-                <>
-                  <a href="#" className="text-gray-400 hover:text-white transition" aria-label="Instagram">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 6.627 5.374 12 12 12 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12zm0 2.75c2.49 0 2.79.01 3.78.048 1.41.064 2.178.39 2.69.648.68.264 1.164.578 1.674 1.088.51.51.824.994 1.088 1.674.258.512.584 1.28.648 2.69.038.99.048 1.29.048 3.78s-.01 2.79-.048 3.78c-.064 1.41-.39 2.178-.648 2.69-.264.68-.578 1.164-1.088 1.674-.51.51-.994.824-1.674 1.088-.512.258-1.28.584-2.69.648-.99.038-1.29.048-3.78.048s-2.79-.01-3.78-.048c-1.41-.064-2.178-.39-2.69-.648-.68-.264-1.164-.578-1.674-1.088-.51-.51-.824-.994-1.088-1.674-.258-.512-.584-1.28-.648-2.69-.038-.99-.048-1.29-.048-3.78s.01-2.79.048-3.78c.064-1.41.39-2.178.648-2.69.264-.68.578-1.164 1.088-1.674.51-.51.994-.824 1.674-1.088.512-.258 1.28-.584 2.69-.648.99-.038 1.29-.048 3.78-.048z" />
-                    </svg>
-                  </a>
-                  <a href="#" className="text-gray-400 hover:text-white transition" aria-label="Facebook">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 6.627 5.374 12 12 12 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12zm3.605 8.912h-2.183v-1.714c0-.572.396-.704.675-.704h1.508v-2.404s-1.37-.234-2.68-.234c-2.953 0-3.925 1.994-3.925 3.289v1.767h-2.64v2.885h2.64v7.361h3.256v-7.361h2.55l.325-2.885z" />
-                    </svg>
-                  </a>
-                  <a href="#" className="text-gray-400 hover:text-white transition" aria-label="YouTube">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 6.627 5.374 12 12 12 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12zm4.441 16.892c-2.102.144-6.784.144-8.883 0-2.276-.156-2.541-1.27-2.558-4.892.017-3.623.282-4.736 2.558-4.892 2.099-.144 6.782-.144 8.883 0 2.277.156 2.541 1.27 2.559 4.892-.018 3.623-.283 4.736-2.559 4.892zm-6.441-7.234l4.917 2.852-4.917 2.856v-5.708z" />
-                    </svg>
-                  </a>
-                  <a href="#" className="text-gray-400 hover:text-white transition" aria-label="Twitter">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 6.627 5.374 12 12 12 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12zm6.028 9.615c.01.162.015.323.015.485 0 4.99-3.797 10.742-10.74 10.742-2.133 0-4.116-.625-5.787-1.697.296.035.597.053.902.053 1.77 0 3.397-.604 4.688-1.615-1.652-.031-3.046-1.121-3.526-2.621.23.036.468.055.712.055.344 0 .678-.044 1.002-.128-1.727-.346-3.028-1.87-3.028-3.696 0-.016 0-.032 0-.048.509.283 1.092.452 1.71.473-1.013-.678-1.68-1.832-1.68-3.143 0-.691.186-1.34.512-1.898 1.86 2.286 4.644 3.787 7.765 3.945-.064-.275-.097-.561-.097-.854 0-2.069 1.677-3.745 3.744-3.745 1.077 0 2.048.454 2.73 1.179 1.072-.212 2.082-.605 2.991-1.147-.352 1.1-1.1 2.022-2.074 2.605.955-.115 1.864-.368 2.712-.744-.632.94-1.43 1.768-2.348 2.432z" />
-                    </svg>
-                  </a>
-                </>
-              )}
-            </div>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="gp-btn gp-btn-outline text-paper">
+              Email us
+            </a>
           </div>
         </div>
 
-        <div className="border-t border-gray-700 pt-8">
-          <p className="text-center text-gray-400">© {currentYear} Tarana. All rights reserved.</p>
+        <nav aria-label="Site" className="flex-[0_1_180px] flex flex-col gap-3 gp-mono text-[15px]">
+          <span className="text-xs uppercase text-[#B8B2A6]">Site</span>
+          {siteLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:text-poster-light w-fit">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        {socialLinks.length > 0 && (
+          <nav aria-label="Follow us" className="flex-[0_1_200px] flex flex-col gap-3 gp-mono text-[15px]">
+            <span className="text-xs uppercase text-[#B8B2A6]">Follow</span>
+            {socialLinks.map((link) => (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-poster-light w-fit"
+              >
+                {link.platform}
+              </a>
+            ))}
+          </nav>
+        )}
+      </div>
+
+      <div className="gp-container pb-8">
+        <div className="pt-6 border-t border-[#3A3833] flex items-center flex-wrap justify-between gap-4 gp-mono text-xs text-[#B8B2A6]">
+          <div className="flex items-center gap-4">
+            {logoWhite && <img src={logoWhite} alt="Tarana" className="h-10 w-auto" />}
+            <p>© {currentYear} Tarana. All rights reserved.</p>
+          </div>
+          <Link
+            href="/admin"
+            className="inline-flex items-center min-h-[44px] px-4 border border-[#6B665C] text-paper uppercase hover:bg-paper hover:text-ink transition-colors"
+          >
+            Band login →
+          </Link>
         </div>
       </div>
     </footer>

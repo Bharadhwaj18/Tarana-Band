@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { useConfigLoader } from '@/lib/useConfigLoader';
+import { useAppConfig } from '@/components/AppConfigProvider';
 import { createClient } from '@supabase/supabase-js';
 
 interface BandMember {
@@ -22,22 +23,44 @@ interface AboutConfig {
   story_paragraphs?: string[];
 }
 
+const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+
+// Big festivals first, then colleges and venues, as on a gig poster lineup
+const HEADLINE_STAGES = ['Bengaluru Ganesh Utsava', 'Udupi Paryaya', 'Under 25 Summit', 'Slaughterfest', 'Bangalore Habba'];
+const MORE_STAGES = ['MAHE Bengaluru', 'DSCE', 'RNSIT', 'SMVITM', 'NITTE', 'Orion Mall', 'Phoenix Marketcity', 'Forum South Mall'];
+
+// Short label shown on each member's photo
+function instrumentTag(role: string) {
+  const r = role.toLowerCase();
+  if (r.includes('vocal')) return 'Vocals';
+  if (r.includes('flaut') || r.includes('flute')) return 'Flute';
+  if (r.includes('percuss')) return 'Percussion';
+  if (r.includes('drum')) return 'Drums';
+  if (r.includes('bass')) return 'Bass';
+  if (r.includes('guitar')) return 'Guitar';
+  if (r.includes('key')) return 'Keys';
+  return role.split('/')[0].trim();
+}
+
+// Splits the description into a lead (first two sentences) and the rest
+function splitLead(text: string) {
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g);
+  if (!sentences || sentences.length <= 2) return { lead: text, rest: '' };
+  return { lead: sentences.slice(0, 2).join('').trim(), rest: sentences.slice(2).join('').trim() };
+}
+
 export default function AboutPage() {
+  const { navConfig } = useAppConfig();
   const [bandMembers, setBandMembers] = useState<BandMember[]>([]);
+  const [storyPhoto, setStoryPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [aboutConfig, setAboutConfig] = useState<AboutConfig>({
-    hero_title: "About TARANA",
-    hero_description: "Tarana is a dynamic rock band with electrifying performances and unforgettable music. With 7 talented musicians, we bring raw energy and passion to every stage.",
-    story_title: "Our Story",
-    story_paragraphs: [
-      "Tarana was formed with a vision to bring authentic rock music to audiences worldwide. What started as a passion project evolved into a full-fledged movement.",
-      "Our music blends classic rock influences with contemporary energy, creating a sound that resonates with fans across generations. Each member brings unique talent and dedication to the band.",
-      "From intimate venues to sold-out shows, every performance is a celebration of music and connection. Join us on this incredible journey."
-    ]
+    hero_title: 'About TARANA',
+    hero_description:
+      'Tarana is a seven-piece band from Bengaluru fusing semi-classical, rock and more. Carnatic guitar and Carnatic flute, a touch of Western rock, all carried by soulful Hindustani vocals.',
+    story_title: 'Our Story',
+    story_paragraphs: [],
   });
-
-  // Config fills in as it loads; the page renders straight away with defaults
-  const { navConfig } = useConfigLoader();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,166 +74,164 @@ export default function AboutPage() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       );
 
-      // Fetch band members
-      const { data: membersData, error: membersError } = await supabase
-        .from('band_members')
-        .select('*')
-        .order('order_position', { ascending: true });
+      const [{ data: membersData }, { data: configData }, { data: photoData }] = await Promise.all([
+        supabase.from('band_members').select('*').order('order_position', { ascending: true }),
+        supabase.from('general_config').select('content').eq('section_name', 'about_page').maybeSingle(),
+        supabase.from('gallery_photos').select('image_url').limit(6),
+      ]);
 
-      if (membersError) {
-        console.error('Error fetching band members:', membersError);
-      } else {
-        setBandMembers(membersData || []);
+      setBandMembers(membersData || []);
+      if (configData?.content) setAboutConfig(configData.content as AboutConfig);
+      if (photoData && photoData.length > 0) {
+        setStoryPhoto(photoData[Math.min(5, photoData.length - 1)].image_url);
       }
-
-      // Fetch about page config
-      const { data: configData, error: configError } = await supabase
-        .from('general_config')
-        .select('content')
-        .eq('section_name', 'about_page')
-        .single();
-
-      if (configError) {
-        console.error('Error fetching about config:', configError);
-      } else if (configData?.content) {
-        setAboutConfig(configData.content as AboutConfig);
-      }
-
       setLoading(false);
     };
 
     fetchData();
   }, []);
 
-  return (
-    <main className="bg-black">
-      <>
-          <Navigation config={navConfig} />
+  const memberCount = bandMembers.length;
+  const countWord = memberCount > 0 && memberCount < NUMBER_WORDS.length ? NUMBER_WORDS[memberCount] : 'All';
+  const { lead, rest } = splitLead(aboutConfig.hero_description || '');
+  const storyParagraphs = aboutConfig.story_paragraphs || [];
 
-      {/* Hero Section with Gold Accent */}
-      <section className="bg-black text-white py-10 sm:py-12">
-        <div className="container-custom">
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gold via-gold-light to-gold mb-6">
-            {aboutConfig.hero_title || "About TARANA"}
-          </h1>
-          <p className="text-base sm:text-lg lg:text-2xl text-gray-300 w-full">
-            {aboutConfig.hero_description || "Tarana is a dynamic rock band with electrifying performances and unforgettable music."}
-          </p>
+  return (
+    <main className="gp min-h-screen">
+      <Navigation />
+
+      <section className="gp-container pt-12 sm:pt-14 pb-16 sm:pb-20">
+        <p className="gp-mono text-sm uppercase mb-3">{aboutConfig.hero_title || 'About Tarana'}</p>
+        <h1 className="gp-display text-[clamp(64px,12vw,190px)] leading-[0.84]">
+          {countWord} players.
+          <br />
+          <span className="text-poster">One sound.</span>
+        </h1>
+        <div className="flex flex-wrap gap-10 sm:gap-12 mt-12 sm:mt-14 pt-8 border-t-[3px] border-ink">
+          <p className="flex-[1_1_480px] min-w-0 text-xl sm:text-[26px] leading-snug font-medium">{lead}</p>
+          {rest && <p className="flex-[1_1_400px] min-w-0 text-[17px] leading-relaxed">{rest}</p>}
         </div>
       </section>
 
-      {/* Band Members Section */}
-      <section className="py-10 bg-gradient-to-b from-black to-gray-900">
-        <div className="container-custom">
-          <h2 className="text-5xl font-display font-bold text-center text-gold mb-16">
-            Meet The Band
-          </h2>
+      <section aria-label="Where we have played" className="bg-ink text-paper">
+        <div className="gp-container py-16 sm:py-20 text-center">
+          <p className="gp-mono text-sm uppercase text-poster-light mb-6">As seen on stage at</p>
+          <p className="font-poster uppercase text-[clamp(28px,4vw,56px)] leading-[1.1]">
+            {HEADLINE_STAGES.map((stage, index) => (
+              <span key={stage}>
+                {stage}
+                {index < HEADLINE_STAGES.length - 1 && <span className="text-poster-light"> ✶ </span>}
+              </span>
+            ))}
+          </p>
+          <p className="gp-mono text-base leading-loose text-[#D6D0C4] mt-7">{MORE_STAGES.join(' · ')}</p>
+        </div>
+      </section>
 
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-lg">Loading band members...</p>
-            </div>
-          ) : bandMembers.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {bandMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="group bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-gold/20 transition-all"
-                >
-                  {member.image_url && (
-                    <div className="w-full h-72 bg-gray-800 overflow-hidden">
+      <section className="gp-container py-20 sm:py-24">
+        <div className="flex flex-wrap justify-between items-end gap-4 mb-10">
+          <h2 className="gp-display text-[clamp(56px,8vw,120px)]">The lineup</h2>
+          {memberCount > 0 && (
+            <p className="gp-mono text-[15px]">{String(memberCount).padStart(2, '0')} members</p>
+          )}
+        </div>
+
+        {loading ? (
+          <p className="gp-mono py-12">Loading the lineup…</p>
+        ) : memberCount > 0 ? (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
+            {bandMembers.map((member) => {
+              const tags = member.bio
+                .split('|')
+                .map((tag) => tag.trim())
+                .filter(Boolean);
+              return (
+                <article key={member.id} className="border-[3px] border-ink bg-white group">
+                  <div className="relative border-b-[3px] border-ink overflow-hidden bg-ink">
+                    {member.image_url ? (
                       <img
                         src={member.image_url}
                         alt={member.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                        className="w-full aspect-[4/5] object-cover object-[50%_20%] block grayscale contrast-110 group-hover:grayscale-0 transition duration-300"
                       />
-                    </div>
-                  )}
-                  <div className="p-6">
-                    <h3 className="text-2xl font-display font-bold text-gold mb-2">
-                      {member.name}
-                    </h3>
-                    <p className="text-gold-light font-semibold mb-4 text-sm uppercase tracking-wider">
-                      {member.role}
-                    </p>
-                    <p className="text-gray-300 leading-relaxed">{member.bio}</p>
+                    ) : (
+                      <div className="w-full aspect-[4/5] bg-rule" />
+                    )}
+                    <span className="absolute top-3 left-3 bg-poster text-white gp-mono text-xs font-bold uppercase px-2.5 py-1.5">
+                      {instrumentTag(member.role)}
+                    </span>
                   </div>
-                </div>
+                  <div className="p-5">
+                    <h3 className="font-poster uppercase text-[26px] leading-none">{member.name}</h3>
+                    <p className="gp-mono text-[13px] uppercase mt-1.5 mb-3.5">{member.role}</p>
+                    {tags.length > 1 ? (
+                      <ul className="flex flex-wrap gap-1.5 text-[13px]">
+                        {tags.map((tag) => (
+                          <li key={tag} className="border border-ink px-2 py-1">
+                            {tag}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[15px] leading-relaxed">{member.bio}</p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+
+            {navConfig.show_contact !== false && (
+              <Link
+                href="/contact"
+                className="border-[3px] border-dashed border-ink flex flex-col justify-center items-center text-center gap-3 p-8 min-h-[400px] hover:bg-ink hover:text-paper transition-colors"
+              >
+                <span className="gp-display text-[40px] leading-[0.95]">
+                  Book the
+                  <br />
+                  full band
+                </span>
+                <span className="gp-mono text-sm">Fests · colleges · malls · private →</span>
+              </Link>
+            )}
+          </div>
+        ) : (
+          <p className="gp-mono py-12">The lineup is coming soon.</p>
+        )}
+      </section>
+
+      <section className="bg-poster text-white">
+        <div className="gp-container py-20 sm:py-24 flex flex-wrap gap-14 items-center">
+          <div className="flex-[1_1_480px] min-w-0">
+            <p className="gp-mono text-sm uppercase mb-4">{aboutConfig.story_title || 'Our story'}</p>
+            <h2 className="gp-display text-[clamp(48px,6vw,96px)] mb-7">It started as a jam.</h2>
+            <div className="space-y-4 text-lg leading-relaxed max-w-[56ch]">
+              {storyParagraphs.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="bg-gray-800 rounded-2xl p-12 max-w-2xl mx-auto">
-                <p className="text-gray-400 text-lg mb-4">
-                  Band members coming soon!
-                </p>
-                <p className="text-gray-500 text-sm">
-                  Add band members from the{' '}
-                  <a href="/admin/members" className="text-gold hover:text-gold-light underline">
-                    Admin Panel
-                  </a>
-                </p>
-              </div>
-            </div>
+          </div>
+          {storyPhoto && (
+            <img
+              src={storyPhoto}
+              alt="Tarana performing live"
+              loading="lazy"
+              className="flex-[1_1_440px] min-w-0 w-full aspect-[4/3] object-cover border-[3px] border-ink shadow-hard"
+            />
           )}
         </div>
       </section>
 
-      {/* Story Section */}
-      <section className="py-10 bg-gray-900">
-        <div className="container-custom max-w-4xl">
-          <h2 className="text-5xl font-display font-bold text-center text-gold mb-12">
-            {aboutConfig.story_title || "Our Story"}
-          </h2>
-          <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
-            {aboutConfig.story_paragraphs && aboutConfig.story_paragraphs.length > 0 ? (
-              aboutConfig.story_paragraphs.map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))
-            ) : (
-              <>
-                <p>
-                  Tarana was formed with a vision to bring authentic rock music to
-                  audiences worldwide. What started as a passion project evolved into
-                  a full-fledged movement.
-                </p>
-                <p>
-                  Our music blends classic rock influences with contemporary energy,
-                  creating a sound that resonates with fans across generations. Each
-                  member brings unique talent and dedication to the band.
-                </p>
-                <p>
-                  From intimate venues to sold-out shows, every performance is a
-                  celebration of music and connection. Join us on this incredible
-                  journey.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {navConfig.show_tours && (
-        <section className="py-12 bg-gradient-to-r from-gold-dark via-gold to-gold-light">
-          <div className="container-custom text-center">
-            <h2 className="text-4xl md:text-5xl font-display font-bold text-black mb-6">
-              Experience TARANA Live
-            </h2>
-            <p className="text-xl text-black/80 mb-8 max-w-2xl mx-auto">
-              Don't miss our next show. Pure energy, unforgettable nights.
-            </p>
-            <a
-              href="/tours"
-              className="inline-block px-12 py-4 bg-black hover:bg-gray-900 text-gold font-bold text-xl rounded-full transform hover:scale-105 transition-all shadow-2xl"
-            >
-              See Tour Dates
-            </a>
-          </div>
+      {navConfig.show_tours !== false && (
+        <section className="gp-container py-16 sm:py-20 flex flex-wrap justify-between items-center gap-6">
+          <h2 className="gp-display text-[clamp(40px,5vw,72px)]">Experience Tarana live.</h2>
+          <Link href="/tours" className="gp-btn gp-btn-ink text-[17px]">
+            See live dates →
+          </Link>
         </section>
       )}
 
       <Footer />
-      </>
     </main>
   );
 }

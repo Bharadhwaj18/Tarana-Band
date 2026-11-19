@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import VideoModal from '@/components/VideoModal';
@@ -26,13 +26,96 @@ interface Video {
   category_id: string | null;
 }
 
+const VIDEOS_PER_PAGE = 6;
+
+function getYouTubeId(video: Video): string | null {
+  if (video.video_type !== 'youtube') return null;
+  try {
+    if (video.video_file_url.includes('youtube.com')) return new URL(video.video_file_url).searchParams.get('v');
+    if (video.video_file_url.includes('youtu.be/')) return video.video_file_url.split('youtu.be/')[1].split(/[?&]/)[0];
+    return video.video_file_url;
+  } catch {
+    return null;
+  }
+}
+
+function getVideoEmbedUrl(video: Video): string {
+  try {
+    if (video.video_type === 'youtube') {
+      const videoId = getYouTubeId(video);
+      if (!videoId) throw new Error('Invalid YouTube URL');
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
+    }
+    if (video.video_type === 'vimeo') {
+      const videoId = video.video_file_url.split('/').pop();
+      if (!videoId) throw new Error('Invalid Vimeo URL');
+      return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1`;
+    }
+    if (video.video_type === 'drive') {
+      let driveFileId = '';
+      if (video.video_file_url.includes('drive.google.com/file/d/')) {
+        driveFileId = video.video_file_url.split('/d/')[1].split('/')[0];
+      } else if (video.video_file_url.includes('?id=')) {
+        driveFileId = new URL(video.video_file_url).searchParams.get('id') || '';
+      } else {
+        driveFileId = video.video_file_url;
+      }
+      if (!driveFileId) throw new Error('Invalid Google Drive URL');
+      return `https://drive.google.com/file/d/${driveFileId}/preview?usp=drivesdk`;
+    }
+    return video.video_file_url;
+  } catch (error) {
+    console.error('Error generating video embed URL:', error, video);
+    return '';
+  }
+}
+
+function getThumbnail(video: Video): string | null {
+  if (video.thumbnail_url) return video.thumbnail_url;
+  const id = getYouTubeId(video);
+  return id ? `https://img.youtube.com/vi/${id}/maxresdefault.jpg` : null;
+}
+
+// "Aandhi | Tarana (Official Music Video)" -> { name: "Aandhi", kind: "Official Music Video" }
+function splitTitle(title: string) {
+  const [first, ...rest] = title.split('|').map((part) => part.trim());
+  const remainder = rest.join(' ').replace(/^Tarana\s*/i, '').replace(/[()]/g, '').replace(/^\|\s*/, '').trim();
+  return { name: first, kind: remainder };
+}
+
+function Thumb({ video, className = '' }: { video: Video; className?: string }) {
+  const thumbnail = getThumbnail(video);
+  const youtubeId = getYouTubeId(video);
+  if (!thumbnail) {
+    return (
+      <div className={`bg-poster flex items-end p-4 ${className}`}>
+        <span className="font-poster uppercase text-white text-2xl leading-none">{splitTitle(video.title).name}</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={thumbnail}
+      alt=""
+      loading="lazy"
+      className={`object-cover ${className}`}
+      onError={(e) => {
+        // Not every YouTube video has a max-resolution thumbnail
+        const img = e.currentTarget;
+        const fallback = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : '';
+        if (fallback && img.src !== fallback) img.src = fallback;
+      }}
+    />
+  );
+}
+
 export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [categories, setCategories] = useState<VideoCategory[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<{ [categoryId: string]: number }>({});
-  const videosPerPage = 6;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,35 +125,14 @@ export default function VideosPage() {
       }
 
       try {
-        // Fetch categories ordered by position
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('video_categories')
-          .select('*')
-          .order('order_position', { ascending: true });
-
-        if (categoriesError) {
-          console.error('Error fetching categories:', categoriesError);
-          setCategories([]);
-        } else {
-          setCategories(categoriesData || []);
-        }
-
-        // Fetch videos
-        const { data: videosData, error: videosError } = await supabase
-          .from('videos')
-          .select('*')
-          .order('order_position', { ascending: true });
-
-        if (videosError) {
-          console.error('Error fetching videos:', videosError);
-          setVideos([]);
-        } else {
-          setVideos(videosData || []);
-        }
+        const [{ data: categoriesData }, { data: videosData }] = await Promise.all([
+          supabase.from('video_categories').select('*').order('order_position', { ascending: true }),
+          supabase.from('videos').select('*').order('order_position', { ascending: true }),
+        ]);
+        setCategories(categoriesData || []);
+        setVideos(videosData || []);
       } catch (error) {
         console.error('Error:', error);
-        setVideos([]);
-        setCategories([]);
       } finally {
         setLoading(false);
       }
@@ -79,216 +141,170 @@ export default function VideosPage() {
     fetchData();
   }, []);
 
-  function getVideoEmbedUrl(video: Video): string {
-    try {
-      if (video.video_type === 'youtube') {
-        const videoId = video.video_file_url.includes('youtube.com')
-          ? new URL(video.video_file_url).searchParams.get('v')
-          : video.video_file_url;
-        if (!videoId) throw new Error('Invalid YouTube URL');
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
-      }
-      if (video.video_type === 'vimeo') {
-        const videoId = video.video_file_url.split('/').pop();
-        if (!videoId) throw new Error('Invalid Vimeo URL');
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1&controls=1`;
-      }
-      if (video.video_type === 'drive') {
-        let driveFileId = '';
-        // Extract file ID from various Google Drive URL formats
-        if (video.video_file_url.includes('drive.google.com/file/d/')) {
-          driveFileId = video.video_file_url.split('/d/')[1].split('/')[0];
-        } else if (video.video_file_url.includes('?id=')) {
-          driveFileId = new URL(video.video_file_url).searchParams.get('id') || '';
-        } else {
-          // Assume it's just the file ID
-          driveFileId = video.video_file_url;
-        }
-        if (!driveFileId) throw new Error('Invalid Google Drive URL');
-        return `https://drive.google.com/file/d/${driveFileId}/preview?usp=drivesdk`;
-      }
-      return video.video_file_url;
-    } catch (error) {
-      console.error('Error generating video embed URL:', error, video);
-      return '';
-    }
-  }
+  const openVideo = (video: Video) => {
+    setSelectedVideo(video);
+    trackEvent('video_play', { video_title: video.title, video_type: video.video_type });
+  };
 
-  function getYouTubeThumbnail(video: Video): string | null {
-    if (video.video_type !== 'youtube') return null;
-    try {
-      const videoId = video.video_file_url.includes('youtube.com')
-        ? new URL(video.video_file_url).searchParams.get('v')
-        : video.video_file_url;
-      if (!videoId) return null;
-      return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-    } catch {
-      return null;
-    }
-  }
+  const categoriesWithVideos = categories.filter((category) => videos.some((v) => v.category_id === category.id));
+  const visibleCategories =
+    activeCategory === 'all' ? categoriesWithVideos : categoriesWithVideos.filter((c) => c.id === activeCategory);
+
+  const firstCategoryVideo = categoriesWithVideos.length
+    ? videos.find((v) => v.category_id === categoriesWithVideos[0].id)
+    : undefined;
+  const featured = videos.find((v) => v.is_featured) || firstCategoryVideo || videos[0];
+  const featuredTitle = featured ? splitTitle(featured.title) : null;
 
   return (
-    <main>
+    <main className="gp min-h-screen">
       <Navigation />
 
-      {/* Hero Section */}
-      <section className="bg-black text-white py-10 sm:py-12">
-        <div className="container-custom">
-          <h1 className="heading-display mb-4" style={{ color: 'var(--secondary)' }}>VIDEOS</h1>
-          <p className="text-lg sm:text-xl text-gray-300">
-            Watch Tarana's latest performances, music videos, and behind-the-scenes content.
-          </p>
+      <section className="gp-container pt-12 sm:pt-14 pb-8 flex flex-wrap justify-between items-end gap-6">
+        <div>
+          <p className="gp-mono text-sm uppercase mb-3">Music videos · covers · live</p>
+          <h1 className="gp-display text-[clamp(72px,13vw,200px)] leading-[0.82]">
+            Watch<span className="text-poster">.</span>
+          </h1>
         </div>
+        {categoriesWithVideos.length > 1 && (
+          <div role="tablist" aria-label="Video categories" className="flex flex-wrap border-[3px] border-ink">
+            {[{ id: 'all', name: 'All' }, ...categoriesWithVideos].map((category, index, all) => (
+              <button
+                key={category.id}
+                type="button"
+                role="tab"
+                aria-selected={activeCategory === category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`min-h-[52px] px-5 gp-mono font-bold text-sm uppercase ${
+                  index < all.length - 1 ? 'border-r-[3px] border-ink' : ''
+                } ${activeCategory === category.id ? 'bg-ink text-paper' : 'bg-paper hover:bg-white'}`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* Videos Section - Netflix Style */}
       {loading ? (
-        <section className="py-10 sm:py-12 bg-black">
-          <div className="container-custom text-center">
-            <p className="text-gray-300">Loading videos...</p>
-          </div>
-        </section>
-      ) : categories.length === 0 ? (
-        <section className="py-10 sm:py-12 bg-black">
-          <div className="container-custom text-center">
-            <p className="text-gray-300 text-lg">
-              No video categories available yet.
-            </p>
-          </div>
-        </section>
+        <p className="gp-container gp-mono py-16">Loading videos…</p>
+      ) : !featured ? (
+        <p className="gp-container gp-mono py-16">No videos yet. Check back soon.</p>
       ) : (
-        <section className="py-10 sm:py-12 bg-black space-y-12">
-          {categories.map((category) => {
-            const categoryVideos = videos.filter(v => v.category_id === category.id);
-            if (categoryVideos.length === 0) return null;
+        <>
+          {activeCategory === 'all' && featuredTitle && (
+            <section className="gp-container pt-4 pb-16 sm:pb-20 flex flex-wrap gap-10 items-stretch">
+              <button
+                type="button"
+                onClick={() => openVideo(featured)}
+                aria-label={`Play ${featured.title}`}
+                className="flex-[999_1_620px] min-w-0 relative block bg-ink border-[3px] border-ink shadow-hard-red group text-left"
+              >
+                <Thumb video={featured} className="w-full aspect-video block" />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center bg-poster text-white border-[3px] border-ink group-hover:scale-110 transition-transform">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M6 3l15 9-15 9z" />
+                  </svg>
+                </span>
+              </button>
+              <div className="flex-[1_1_340px] min-w-0 flex flex-col gap-4">
+                <span className="self-start bg-ink text-paper gp-mono text-xs font-bold uppercase px-2.5 py-1.5">
+                  Featured{featuredTitle.kind ? ` · ${featuredTitle.kind}` : ''}
+                </span>
+                <h2 className="gp-display text-6xl sm:text-[72px]">{featuredTitle.name}</h2>
+                {featured.description && (
+                  <p className="text-[17px] leading-relaxed line-clamp-6 whitespace-pre-line">{featured.description}</p>
+                )}
+                <button type="button" onClick={() => openVideo(featured)} className="gp-btn gp-btn-ink self-start mt-auto">
+                  ▶ Play video
+                </button>
+              </div>
+            </section>
+          )}
 
-            const page = currentPage[category.id] || 0;
-            const startIndex = page * videosPerPage;
-            const endIndex = startIndex + videosPerPage;
-            const visibleVideos = categoryVideos.slice(startIndex, endIndex);
-            const totalPages = Math.ceil(categoryVideos.length / videosPerPage);
-            const hasNextPage = page < totalPages - 1;
-            const hasPrevPage = page > 0;
+          <div className="gp-container pb-20 sm:pb-24 space-y-16">
+            {visibleCategories.map((category) => {
+              const categoryVideos = videos.filter((v) => v.category_id === category.id);
+              const page = currentPage[category.id] || 0;
+              const totalPages = Math.ceil(categoryVideos.length / VIDEOS_PER_PAGE);
+              const pageVideos = categoryVideos.slice(page * VIDEOS_PER_PAGE, (page + 1) * VIDEOS_PER_PAGE);
 
-            return (
-              <div key={category.id} className="container-custom">
-                {/* Category Title with Arrows and Show More */}
-                <div className="flex items-center gap-4 mb-6 justify-between">
-                  <div className="flex items-center gap-4">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white">{category.name}</h2>
-
-                    {/* Navigation Arrows */}
-                    <div className="flex gap-2">
-                      {hasPrevPage && (
-                        <button
-                          onClick={() => setCurrentPage(prev => ({ ...prev, [category.id]: prev[category.id] - 1 }))}
-                          className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
-                          aria-label="Previous videos"
-                        >
-                          <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
+              return (
+                <section key={category.id} aria-label={category.name}>
+                  <div className="flex flex-wrap justify-between items-center gap-4 pb-3 mb-6 border-b-[3px] border-ink">
+                    <h2 className="font-poster uppercase text-3xl sm:text-[44px] leading-none">{category.name}</h2>
+                    <div className="flex items-center gap-3">
+                      {totalPages > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={page === 0}
+                            onClick={() => setCurrentPage((prev) => ({ ...prev, [category.id]: page - 1 }))}
+                            aria-label={`Previous ${category.name}`}
+                            className="w-11 h-11 border-[3px] border-ink font-bold disabled:opacity-30"
+                          >
+                            ←
+                          </button>
+                          <span className="gp-mono text-sm">
+                            {page + 1}/{totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={page >= totalPages - 1}
+                            onClick={() => setCurrentPage((prev) => ({ ...prev, [category.id]: page + 1 }))}
+                            aria-label={`Next ${category.name}`}
+                            className="w-11 h-11 bg-ink text-paper font-bold disabled:opacity-30"
+                          >
+                            →
+                          </button>
+                        </>
                       )}
-
-                      {hasNextPage && (
-                        <button
-                          onClick={() => setCurrentPage(prev => ({ ...prev, [category.id]: prev[category.id] + 1 }))}
-                          className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
-                          aria-label="Next videos"
+                      {category.show_more_link && (
+                        <a
+                          href={category.show_more_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="gp-mono text-sm font-bold underline underline-offset-4 hover:text-poster-dark"
                         >
-                          <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
+                          Show all ↗
+                        </a>
                       )}
                     </div>
                   </div>
 
-                  {/* Show More Link */}
-                  {category.show_more_link && (
-                    <a
-                      href={category.show_more_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-gold hover:bg-gold-light text-black font-semibold text-sm rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
-                    >
-                      <span>Show All</span>
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 10l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </a>
-                  )}
-                </div>
-
-                {/* Videos Container */}
-                <div className="mb-6">
-                  <div className="flex gap-4 overflow-hidden">
-                    {visibleVideos.map((video) => (
-                      <button
-                        key={video.id}
-                        onClick={() => {
-                          setSelectedVideo(video);
-                          trackEvent('video_play', { video_title: video.title, video_type: video.video_type });
-                        }}
-                        className="flex-shrink-0 group cursor-pointer transition-transform hover:scale-105"
-                        style={{ width: '280px' }}
-                      >
-                        <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden relative">
-                          {(() => {
-                            const thumbnailUrl = video.thumbnail_url || getYouTubeThumbnail(video);
-                            if (thumbnailUrl) {
-                              return (
-                                <img
-                                  src={thumbnailUrl}
-                                  alt={video.title}
-                                  className="w-full h-full object-cover group-hover:brightness-75 transition-all"
-                                  onError={(e) => {
-                                    console.error('Image load error:', video.title);
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              );
-                            }
-                            return (
-                              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-700">
-                                <svg
-                                  className="w-12 h-12 text-gray-500"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                                </svg>
-                              </div>
-                            );
-                          })()}
-                          {/* Play button overlay */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-all">
-                            <svg
-                              className="w-16 h-16 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                            </svg>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
+                    {pageVideos.map((video) => {
+                      const { name, kind } = splitTitle(video.title);
+                      return (
+                        <button
+                          key={video.id}
+                          type="button"
+                          onClick={() => openVideo(video)}
+                          className="text-left group"
+                          title={video.title}
+                        >
+                          <div className="relative border-[3px] border-ink bg-ink overflow-hidden">
+                            <Thumb video={video} className="w-full aspect-video block group-hover:scale-105 transition-transform duration-300" />
+                            <span className="absolute left-0 bottom-0 bg-poster text-white gp-mono text-xs font-bold px-2.5 py-1.5">
+                              ▶ PLAY
+                            </span>
                           </div>
-                        </div>
-                        <div className="mt-3">
-                          <h3 className="text-white font-semibold text-sm line-clamp-1 group-hover:text-gray-300 truncate" title={video.title}>
-                            {video.title}
-                          </h3>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="mt-3 font-poster uppercase text-[22px] leading-tight group-hover:text-poster-dark">
+                            {name}
+                          </div>
+                          {kind && <div className="gp-mono text-[13px] mt-0.5">{kind}</div>}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </section>
+                </section>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Video Modal */}
       <VideoModal
         video={selectedVideo}
         isOpen={!!selectedVideo}

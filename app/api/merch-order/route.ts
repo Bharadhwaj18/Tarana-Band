@@ -1,58 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendEmail } from '@/lib/email';
-import { adjustStock } from '@/lib/merchStock';
-import { getProofExtension, validateProofImage } from '@/lib/uploads';
+import { createRazorpayOrder, getRazorpayKeyId, isRazorpayConfigured, toPaise } from '@/lib/razorpay';
 
+// Starts checkout: checks the cart against the database, saves the order as pending_payment
+// and creates the matching Razorpay order. The order is only confirmed after payment
+// (see /api/merch-order/verify and /api/razorpay/webhook).
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    const body = await request.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+    }
 
-    const fullName = String(formData.get('fullName') || '');
-    const phone = String(formData.get('phone') || '');
-    const email = String(formData.get('email') || '');
-    const addressLine1 = String(formData.get('addressLine1') || '');
-    const addressLine2 = String(formData.get('addressLine2') || '');
-    const city = String(formData.get('city') || '');
-    const state = String(formData.get('state') || '');
-    const pincode = String(formData.get('pincode') || '');
-    const totalAmount = Number(formData.get('totalAmount') || 0);
-    const itemsRaw = String(formData.get('items') || '[]');
-    const paymentProof = formData.get('paymentProof') as File | null;
+    const fullName = String(body.fullName || '').trim();
+    const phone = String(body.phone || '').trim();
+    const email = String(body.email || '').trim();
+    const addressLine1 = String(body.addressLine1 || '').trim();
+    const addressLine2 = String(body.addressLine2 || '').trim();
+    const city = String(body.city || '').trim();
+    const state = String(body.state || '').trim();
+    const pincode = String(body.pincode || '').trim();
+    const totalAmount = Number(body.totalAmount || 0);
+    const cartItems = body.items;
 
     if (!fullName || !phone || !email || !addressLine1 || !city || !state || !pincode) {
       return NextResponse.json({ error: 'Missing required checkout fields.' }, { status: 400 });
-    }
-    if (!paymentProof) {
-      return NextResponse.json({ error: 'Payment proof is required.' }, { status: 400 });
-    }
-
-    const proofError = validateProofImage(paymentProof);
-    if (proofError) {
-      return NextResponse.json({ error: proofError }, { status: 400 });
-    }
-
-    let cartItems: any[] = [];
-    try {
-      cartItems = JSON.parse(itemsRaw);
-    } catch {
-      return NextResponse.json({ error: 'Invalid cart data.' }, { status: 400 });
     }
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
       return NextResponse.json({ error: 'Your cart is empty.' }, { status: 400 });
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
+    }
+    if (!isRazorpayConfigured()) {
+      return NextResponse.json({ error: 'Online payments are not set up yet.' }, { status: 500 });
     }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
     // Prices and stock come from the database, never from the browser
-    const productIds = Array.from(new Set(cartItems.map((item) => String(item?.product?.id || ''))));
+    const productIds = Array.from(new Set(cartItems.map((item: any) => String(item?.product?.id || ''))));
     const { data: products, error: productsError } = await supabase
       .from('merchandise')
       .select('id, name, price, is_active, size_stock, image_url')
@@ -114,86 +105,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const proofPath = `merch-payment-proofs/${Date.now()}-${Math.random().toString(36).slice(2)}.${getProofExtension(paymentProof)}`;
+    const now = new Date().toISOString();
+    const { data: order, error: insertError } = await supabase
+      .from('merch_orders')
+      .insert([
+        {
+          customer_name: fullName,
+          phone,
+          email,
+          address_line1: addressLine1,
+          address_line2: addressLine2 || null,
+          city,
+          state,
+          pincode,
+          items,
+          total_amount: calculatedTotal,
+          status: 'pending_payment',
+          created_at: now,
+          updated_at: now,
+        },
+      ])
+      .select('id')
+      .single();
 
-    const uploadResult = await supabase.storage
-      .from('photos')
-      .upload(proofPath, paymentProof, {
-        upsert: false,
-        contentType: paymentProof.type,
-        cacheControl: '3600',
+    if (insertError || !order) {
+      return NextResponse.json({ error: `Failed to save order: ${insertError?.message || 'unknown error'}` }, { status: 500 });
+    }
+
+    const amountPaise = toPaise(calculatedTotal);
+    let razorpayOrder: any;
+    try {
+      razorpayOrder = await createRazorpayOrder({
+        amountPaise,
+        receipt: order.id,
+        notes: { merch_order_id: order.id },
       });
-
-    if (uploadResult.error) {
-      return NextResponse.json({ error: `Payment proof upload failed: ${uploadResult.error.message}` }, { status: 500 });
+    } catch (error: any) {
+      // Remove the pending order so it doesn't linger without a payment attached
+      await supabase.from('merch_orders').delete().eq('id', order.id).eq('status', 'pending_payment');
+      console.error('Razorpay order creation failed:', error);
+      return NextResponse.json({ error: 'Could not start the payment. Please try again.' }, { status: 502 });
     }
 
-    const { data: proofUrlData } = supabase.storage.from('photos').getPublicUrl(proofPath);
-    const paymentProofUrl = proofUrlData.publicUrl;
+    const { error: linkError } = await supabase
+      .from('merch_orders')
+      .update({ razorpay_order_id: razorpayOrder.id, updated_at: new Date().toISOString() })
+      .eq('id', order.id);
 
-    const { error: insertError } = await supabase.from('merch_orders').insert([
-      {
-        customer_name: fullName,
-        phone,
-        email,
-        address_line1: addressLine1,
-        address_line2: addressLine2 || null,
-        city,
-        state,
-        pincode,
-        items,
-        total_amount: calculatedTotal,
-        payment_proof_url: paymentProofUrl,
-        payment_proof_path: proofPath,
-        status: 'confirmed',
-        created_at: new Date().toISOString(),
-      },
-    ]);
-
-    if (insertError) {
-      return NextResponse.json({ error: `Failed to save order: ${insertError.message}` }, { status: 500 });
+    if (linkError) {
+      return NextResponse.json({ error: `Failed to save order: ${linkError.message}` }, { status: 500 });
     }
 
-    // Decrement stock for each item
-    await adjustStock(supabase, items, -1);
-
-    const itemsHtml = items
-      .map(
-        (item) =>
-          `<li>${item.product?.name || 'Item'} - Size: ${item.size} - Qty: ${item.quantity}</li>`
-      )
-      .join('');
-
-    const emailSent = await sendEmail({
-      to: email,
-      subject: 'Your Tarana Merchandise Order is Confirmed',
-      html: `
-        <h2>Order Confirmed</h2>
-        <p>Hi ${fullName}, your order has been received successfully.</p>
-        <p><strong>Total:</strong> Rs. ${calculatedTotal.toFixed(2)}</p>
-        <ul>${itemsHtml}</ul>
-        <p>Shipping will be done via India Post.</p>
-      `,
+    return NextResponse.json({
+      orderId: order.id,
+      razorpayOrderId: razorpayOrder.id,
+      amount: amountPaise,
+      currency: 'INR',
+      keyId: getRazorpayKeyId(),
     });
-
-    if (process.env.ADMIN_EMAIL) {
-      await sendEmail({
-        to: process.env.ADMIN_EMAIL,
-        subject: `New Merch Order - ${fullName}`,
-        html: `
-          <h2>New Merch Order</h2>
-          <p><strong>Name:</strong> ${fullName}</p>
-          <p><strong>Phone:</strong> ${phone}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Address:</strong> ${addressLine1}, ${addressLine2}, ${city}, ${state} - ${pincode}</p>
-          <p><strong>Total:</strong> Rs. ${calculatedTotal.toFixed(2)}</p>
-          <ul>${itemsHtml}</ul>
-          <p><a href="${paymentProofUrl}">View Payment Proof</a></p>
-        `,
-      });
-    }
-
-    return NextResponse.json({ success: true, emailSent, message: 'Order placed successfully.' });
   } catch (error) {
     console.error('Merch order error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });

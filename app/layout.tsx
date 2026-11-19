@@ -5,6 +5,7 @@ import FontSetter from "@/components/FontSetter";
 import ColorSetter from "@/components/ColorSetter";
 import AppConfigProvider from "@/components/AppConfigProvider";
 import AnalyticsProvider from "@/components/AnalyticsProvider";
+import IntroSplash from "@/components/IntroSplash";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, SOCIAL_PROFILES } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -57,10 +58,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    // The intro script adds classes to <html> before React loads
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Righteous&family=Bebas+Neue&family=Oswald&family=Playfair+Display&family=Montserrat&family=Raleway&family=Poppins:wght@400;500;600;700&family=Inter&family=Roboto&family=Lato&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Righteous&family=Bebas+Neue&family=Oswald&family=Playfair+Display&family=Montserrat&family=Raleway&family=Poppins:wght@400;500;600;700&family=Inter&family=Roboto&family=Lato&family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+Kannada:wght@700&family=Noto+Sans+Devanagari:wght@700&family=Noto+Sans+Tamil:wght@700&family=Noto+Sans+Telugu:wght@700&family=Noto+Sans+Malayalam:wght@700&display=swap"
           rel="stylesheet"
         />
         {/* Favicon with cache busting */}
@@ -72,6 +74,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body">
+        <IntroSplash />
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>
             <Script

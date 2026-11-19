@@ -9,15 +9,16 @@ interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
 }
 
 // Returns true only when Resend accepted the email
-export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+export async function sendEmail({ to, subject, html, replyTo }: EmailOptions): Promise<boolean> {
   if (!process.env.RESEND_API_KEY || !to) return false;
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+    const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html, ...(replyTo ? { replyTo } : {}) });
     if (error) {
       console.error(`Email to ${to} failed:`, error);
       return false;

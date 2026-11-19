@@ -23,8 +23,8 @@ export default function AdminPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <p className="text-gray-600">Redirecting...</p>
+    <div className="min-h-screen bg-ink flex items-center justify-center">
+      <p className="gp-mono text-paper">Opening backstage…</p>
     </div>
   );
 }

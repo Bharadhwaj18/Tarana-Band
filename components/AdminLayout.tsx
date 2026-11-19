@@ -1,17 +1,66 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
+const MENU_GROUPS: { title?: string; items: { href: string; label: string }[] }[] = [
+  { items: [{ href: '/admin/dashboard', label: 'Dashboard' }] },
+  {
+    title: 'Merch',
+    items: [
+      { href: '/admin/merch-orders', label: 'Orders' },
+      { href: '/admin/merch', label: 'Products' },
+      { href: '/admin/inventory', label: 'Stock' },
+    ],
+  },
+  { title: 'Live', items: [{ href: '/admin/tours', label: 'Shows & events' }] },
+  {
+    title: 'Site',
+    items: [
+      { href: '/admin/homepage', label: 'Homepage' },
+      { href: '/admin/about', label: 'About page' },
+      { href: '/admin/members', label: 'Band members' },
+      { href: '/admin/gallery', label: 'Photo gallery' },
+      { href: '/admin/videos', label: 'Videos' },
+      { href: '/admin/settings', label: 'Settings' },
+    ],
+  },
+  { title: 'Inbox', items: [{ href: '/admin/contact-submissions', label: 'Messages' }] },
+];
+
+// Bottom bar on phones: the four things the band does most
+const MOBILE_TABS = [
+  { href: '/admin/dashboard', label: 'Home' },
+  { href: '/admin/merch-orders', label: 'Orders' },
+  { href: '/admin/tours', label: 'Shows' },
+  { href: '/admin/inventory', label: 'Stock' },
+];
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [toShip, setToShip] = useState<number | null>(null);
+
+  // Badge on Orders: paid orders waiting to be shipped
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from('merch_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'confirmed')
+      .then(({ count }: { count: number | null }) => setToShip(count ?? null));
+  }, [pathname]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     if (!supabase) return;
@@ -19,149 +68,112 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.push('/admin/login');
   };
 
-  const menuItems = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-    { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
-    { href: '/admin/homepage', label: 'Homepage', icon: '🏠' },
-    { href: '/admin/about', label: 'About Page', icon: '📖' },
-    { href: '/admin/gallery', label: 'Photo Gallery', icon: '📸' },
-    { href: '/admin/members', label: 'Band Members', icon: '👥' },
-    { href: '/admin/tours', label: 'Tours & Events', icon: '🎤' },
-    { href: '/admin/merch', label: 'Merchandise', icon: '🛍️' },
-    { href: '/admin/inventory', label: 'Inventory', icon: '📊' },
-    { href: '/admin/merch-orders', label: 'Merch Orders', icon: '📦' },
-    { href: '/admin/videos', label: 'Videos', icon: '🎥' },
-    { href: '/admin/contact-submissions', label: 'Contact Messages', icon: '📧' },
-  ];
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
 
-  const handleNavClick = () => {
-    setSidebarOpen(false);
-  };
+  const nav = (
+    <nav aria-label="Admin" className="flex flex-col gap-0.5 text-[15px]">
+      {MENU_GROUPS.map((group, gi) => (
+        <div key={gi} className="flex flex-col gap-0.5">
+          {group.title && (
+            <span className="px-6 pt-5 pb-1.5 gp-mono text-[11px] uppercase text-[#8F8A80]">{group.title}</span>
+          )}
+          {group.items.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex items-center justify-between min-h-[44px] px-6 transition-colors ${
+                  active ? 'bg-poster text-white font-bold' : 'text-paper hover:bg-white/10'
+                }`}
+              >
+                {item.label}
+                {item.href === '/admin/merch-orders' && toShip ? (
+                  <span
+                    className={`gp-mono text-xs font-bold px-2 py-0.5 ${active ? 'bg-ink text-white' : 'bg-poster text-white'}`}
+                  >
+                    {toShip} to ship
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
+  const footerLinks = (
+    <div className="p-6 flex flex-col gap-3 gp-mono text-[13px]">
+      <Link href="/" className="text-paper hover:text-poster-light w-fit">
+        View live site ↗
+      </Link>
+      <button type="button" onClick={handleLogout} className="text-left text-[#B8B2A6] hover:text-paper w-fit">
+        Sign out
+      </button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Sidebar - Desktop */}
-      <div className="fixed left-0 top-0 w-64 h-screen bg-black border-r border-gray-800 hidden lg:flex lg:flex-col z-20">
-        <div className="p-6 border-b border-gray-800 shrink-0">
-          <p className="text-gray-400 text-sm mb-3">Admin Panel</p>
-          <Link
-            href="/"
-            className="mt-3 inline-flex items-center gap-2 text-gold hover:text-gold-light text-sm transition-colors"
-          >
-            <span>←</span>
-            <span>Back to Site</span>
+    <div className="admin-skin min-h-screen bg-paper text-ink font-archivo">
+      {/* Sidebar on desktop */}
+      <aside className="hidden lg:flex fixed left-0 top-0 w-64 h-screen bg-ink text-paper flex-col z-20">
+        <div className="px-6 pt-6 pb-4 flex items-center justify-between">
+          <Link href="/admin/dashboard" aria-label="Backstage home">
+            <img src="/logo-white.png" alt="Tarana" className="h-10 w-auto" />
           </Link>
+          <span className="gp-mono text-[11px] uppercase text-poster-light">Backstage</span>
         </div>
+        <div className="flex-1 overflow-y-auto pb-4">{nav}</div>
+        <div className="border-t border-white/15">{footerLinks}</div>
+      </aside>
 
-        <nav className="mt-6 space-y-1 px-0 overflow-y-auto flex-1 pb-6">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
+      {/* Top bar on phones and tablets */}
+      <header className="lg:hidden sticky top-0 z-30 bg-ink text-paper flex items-center justify-between px-4 py-3">
+        <Link href="/admin/dashboard" aria-label="Backstage home">
+          <img src="/logo-white.png" alt="Tarana" className="h-8 w-auto" />
+        </Link>
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="admin-menu"
+          className="min-h-[44px] px-4 border-2 border-paper gp-mono text-[13px] font-bold uppercase"
+        >
+          {menuOpen ? 'Close' : 'Menu'}
+        </button>
+      </header>
 
-        <div className="border-t border-gray-800 p-6 bg-black shrink-0">
-          <button
-            onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition-colors"
-          >
-            Logout
-          </button>
+      {menuOpen && (
+        <div id="admin-menu" className="lg:hidden fixed inset-x-0 top-[68px] bottom-[62px] z-30 bg-ink text-paper overflow-y-auto">
+          {nav}
+          <div className="border-t border-white/15 mt-4">{footerLinks}</div>
         </div>
-      </div>
-
-      {/* Sidebar - Mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/80 lg:hidden z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
       )}
-      <div
-        className={`fixed left-0 top-0 w-64 h-screen bg-black border-r border-gray-800 overflow-y-auto lg:hidden z-40 transform transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+
+      <main className="lg:ml-64 px-4 sm:px-8 xl:px-12 pt-6 sm:pt-10 pb-28 lg:pb-16">
+        <div className="max-w-6xl">{children}</div>
+      </main>
+
+      {/* Bottom tabs on phones */}
+      <nav
+        aria-label="Quick sections"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-30 grid grid-cols-4 bg-white border-t-[3px] border-ink gp-mono text-[11px] font-bold uppercase text-center"
       >
-        <div className="p-6 border-b border-gray-800">
-          <p className="text-gray-400 text-sm mb-3">Admin Panel</p>
+        {MOBILE_TABS.map((tab, i) => (
           <Link
-            href="/"
-            className="mt-3 inline-flex items-center gap-2 text-gold hover:text-gold-light text-sm transition-colors"
-            onClick={handleNavClick}
+            key={tab.href}
+            href={tab.href}
+            aria-current={isActive(tab.href) ? 'page' : undefined}
+            className={`flex items-center justify-center min-h-[60px] ${i < 3 ? 'border-r-2 border-ink' : ''} ${
+              isActive(tab.href) ? 'bg-poster text-white' : ''
+            }`}
           >
-            <span>←</span>
-            <span>Back to Site</span>
+            {tab.label}
           </Link>
-        </div>
-
-        <nav className="mt-6 space-y-1">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-              onClick={handleNavClick}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 border-t border-gray-800 p-6 bg-black">
-          <button
-            onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Top Bar */}
-        <div className="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors"
-              aria-label="Toggle sidebar"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-
-        {/* Page Content */}
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-          {children}
-        </div>
-      </div>
+        ))}
+      </nav>
     </div>
   );
 }

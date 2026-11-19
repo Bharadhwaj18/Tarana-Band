@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAppConfig } from './AppConfigProvider';
 
@@ -16,172 +16,117 @@ interface NavigationConfig {
 }
 
 interface NavigationProps {
-  isOverlay?: boolean;
   config?: NavigationConfig;
+  /** Kept for older callers; the poster header is always a solid paper bar. */
+  isOverlay?: boolean;
 }
 
-export default function Navigation({ isOverlay = false, config }: NavigationProps) {
+const NAV_ITEMS = [
+  { href: '/about', label: 'About', configKey: 'show_about' as const },
+  { href: '/tours', label: 'Shows', configKey: 'show_tours' as const },
+  { href: '/videos', label: 'Videos', configKey: 'show_videos' as const },
+  { href: '/contact', label: 'Contact', configKey: 'show_contact' as const },
+];
+
+export default function Navigation({ config }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
   const { navConfig } = useAppConfig();
-  const resolvedConfig = config || navConfig;
+  const resolved: NavigationConfig = { ...navConfig, ...(config || {}) };
 
-  // Detect scroll position to change header background
+  // A tab only shows once its flag has loaded and is on, so hidden pages never flash in
+  const items = NAV_ITEMS.filter((item) => resolved[item.configKey] === true);
+  const showMerch = resolved.show_merch === true;
+
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
+    setIsOpen(false);
+  }, [pathname]);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Build nav items based on config
-  const baseNavItems = [
-    { href: '/', label: 'Home', configKey: 'home' as const },
-    { href: '/about', label: 'About Us', configKey: 'show_about' as const },
-    { href: '/tours', label: 'Tours', configKey: 'show_tours' as const },
-    { href: '/merch', label: 'Merch', configKey: 'show_merch' as const },
-    { href: '/videos', label: 'Videos', configKey: 'show_videos' as const },
-    { href: '/contact', label: 'Contact', configKey: 'show_contact' as const },
-  ];
-
-  // Filter nav items based on config (default to true if config not provided)
-  const navItems = baseNavItems.filter(item => {
-    // Hide Home link when on home page
-    if (item.href === '/' && pathname === '/') {
-      return false;
-    }
-
-    // Always show Home on non-home pages.
-    if (item.configKey === 'home') {
-      return true;
-    }
-
-    // Default behavior: show only Admin until config is loaded.
-    // If a config flag is missing, keep the tab hidden to avoid misinformation.
-    if (!resolvedConfig || resolvedConfig[item.configKey] === undefined) {
-      return false;
-    }
-
-    return resolvedConfig[item.configKey];
-  });
-
-  const containerClass = isOverlay
-    ? `fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
-        isScrolled ? 'bg-black/95 backdrop-blur-sm' : 'bg-transparent'
-      }`
-    : 'bg-black text-white';
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
 
   return (
-    <nav className={`${containerClass} text-white`}>
-      <div className="container-custom flex justify-between items-center py-2">
-        {/* Logo or Brand */}
-        <Link href="/">
-          {/* The nav always sits on a dark background, so it always uses the white logo.
-              The black logo is for light backgrounds such as the browser tab icon. */}
-          {isOverlay && isScrolled ? (
-            // Scrolled overlay: dark background - SMALL SIZE
-            resolvedConfig?.logo_white && (
-              <img
-                src={resolvedConfig.logo_white}
-                alt="TARANA Logo"
-                className={`h-14 object-contain`}
-                title="TARANA"
-              />
-            )
-          ) : isOverlay && !isScrolled ? (
-            // Top overlay: transparent over the hero video - SMALL SIZE
-            resolvedConfig?.logo_white && (
-              <img
-                src={resolvedConfig.logo_white}
-                alt="TARANA Logo"
-                className={`h-14 object-contain`}
-                title="TARANA"
-              />
-            )
+    <header className="gp relative z-30 border-b-[3px] border-ink">
+      <div className="gp-container flex items-center justify-between gap-4 py-3">
+        <Link href="/" aria-label="Tarana home" className="flex items-center min-h-[44px]">
+          {resolved.logo_black ? (
+            <img src={resolved.logo_black} alt="Tarana" className="h-12 sm:h-14 w-auto" />
           ) : (
-            // Non-overlay navigation: black bar - SMALL SIZE
-            resolvedConfig?.logo_white && (
-              <img
-                src={resolvedConfig.logo_white}
-                alt="TARANA Logo"
-                className={`h-16 object-contain`}
-                title="TARANA"
-              />
-            )
+            <span className="gp-display text-3xl">Tarana</span>
           )}
         </Link>
 
-        {/* Desktop menu */}
-        <div className="hidden md:flex gap-8 items-center">
-          {navItems.map((item) => (
+        <nav aria-label="Main" className="hidden md:flex items-center gap-7 gp-mono text-sm font-bold uppercase">
+          {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="hover:text-gray-300 transition-colors font-medium"
+              aria-current={isActive(item.href) ? 'page' : undefined}
+              className={`py-2 hover:text-poster-dark ${
+                isActive(item.href) ? 'underline decoration-[3px] underline-offset-[6px]' : ''
+              }`}
             >
               {item.label}
             </Link>
           ))}
-          <Link href="/admin" className="btn-secondary py-2 px-4">
-            Admin
-          </Link>
-        </div>
+          {showMerch && (
+            <Link
+              href="/merch"
+              aria-current={isActive('/merch') ? 'page' : undefined}
+              className="gp-btn gp-btn-red min-h-[44px] px-5 text-sm"
+            >
+              Merch ↗
+            </Link>
+          )}
+        </nav>
 
-        {/* Mobile menu button */}
         <button
-          className="md:hidden"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle menu"
+          type="button"
+          className="md:hidden gp-btn gp-btn-ink min-h-[44px] px-4 gp-mono text-sm uppercase"
+          onClick={() => setIsOpen((open) => !open)}
+          aria-expanded={isOpen}
+          aria-controls="mobile-menu"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
+          {isOpen ? 'Close' : 'Menu'}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {isOpen && (
-        <div className={`md:hidden transition-all duration-300 ${
-          isOverlay
-            ? isScrolled ? 'bg-black/90' : 'bg-black/80'
-            : 'bg-gray-900'
-        } p-4 space-y-4`}>
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block hover:text-gray-300 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
-          <Link
-            href="/admin"
-            className="block btn-secondary py-2 px-4 text-center"
-            onClick={() => setIsOpen(false)}
-          >
-            Admin
-          </Link>
-        </div>
+        <nav
+          id="mobile-menu"
+          aria-label="Main"
+          className="md:hidden border-t-[3px] border-ink bg-paper"
+        >
+          <ul className="gp-container py-2">
+            {pathname !== '/' && (
+              <li>
+                <Link href="/" className="block py-4 border-b border-ink gp-display text-3xl">
+                  Home
+                </Link>
+              </li>
+            )}
+            {items.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={isActive(item.href) ? 'page' : undefined}
+                  className={`block py-4 border-b border-ink gp-display text-3xl ${
+                    isActive(item.href) ? 'text-poster' : ''
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+            {showMerch && (
+              <li className="py-4">
+                <Link href="/merch" className="gp-btn gp-btn-red w-full text-lg">
+                  Merch ↗
+                </Link>
+              </li>
+            )}
+          </ul>
+        </nav>
       )}
-    </nav>
+    </header>
   );
 }

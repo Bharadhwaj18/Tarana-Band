@@ -1,83 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
-import { createClient } from '@supabase/supabase-js';
+import Footer, { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_HREF } from '@/components/Footer';
+import { useAppConfig } from '@/components/AppConfigProvider';
 import { trackEvent } from '@/lib/analytics';
 
-interface NavigationConfig {
-  logo_black?: string;
-  logo_white?: string;
-  show_about?: boolean;
-  show_tours?: boolean;
-  show_merch?: boolean;
-  show_videos?: boolean;
-  show_contact?: boolean;
-}
+// Topic chips only pre-fill the start of the message; the form sends exactly the same fields
+const TOPICS = [
+  { label: 'Booking a show', prefix: 'Booking enquiry: ' },
+  { label: 'Collab', prefix: 'Collab idea: ' },
+  { label: 'Merch / order', prefix: 'About merch: ' },
+  { label: 'Just saying hi', prefix: 'Hi Tarana! ' },
+];
 
 export default function ContactPage() {
-  const [navConfig, setNavConfig] = useState<NavigationConfig>({});
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: '',
-  });
+  const { socialConfig } = useAppConfig();
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [topic, setTopic] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        return;
-      }
-
-      try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        );
-
-        const { data: generalData } = await supabase
-          .from('general_config')
-          .select('*')
-          .eq('is_active', true);
-
-        if (generalData) {
-          const generalConfig: any = {};
-          generalData.forEach((item: any) => {
-            generalConfig[item.section_name] = item.content;
-          });
-
-          const navigationConfig: NavigationConfig = {
-            logo_black: generalConfig.branding?.logo_black,
-            logo_white: generalConfig.branding?.logo_white,
-            show_about: generalConfig.navigation?.show_about !== false,
-            show_tours: generalConfig.navigation?.show_tours !== false,
-            show_merch: generalConfig.navigation?.show_merch !== false,
-            show_videos: generalConfig.navigation?.show_videos !== false,
-            show_contact: generalConfig.navigation?.show_contact !== false,
-          };
-
-          setNavConfig(navigationConfig);
-        }
-      } catch (error) {
-        console.error('Error fetching config:', error);
-      }
-    };
-
-    fetchConfig();
-  }, []);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const pickTopic = (label: string, prefix: string) => {
+    setTopic(label);
+    setFormData((prev) => {
+      // Swap the previous topic's prefix, or add one to an empty message
+      const previous = TOPICS.find((t) => prev.message.startsWith(t.prefix));
+      const body = previous ? prev.message.slice(previous.prefix.length) : prev.message;
+      return { ...prev, message: prefix + body };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -88,211 +44,155 @@ export default function ContactPage() {
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       const data = await response.json();
 
       if (response.ok) {
         trackEvent('contact_form_submit');
         setStatus('success');
         setFormData({ name: '', email: '', phone: '', message: '' });
-        // Reset success message after 5 seconds
-        setTimeout(() => setStatus('idle'), 5000);
+        setTopic(null);
+        setTimeout(() => setStatus('idle'), 6000);
       } else {
         setStatus('error');
         setErrorMessage(data.error || 'Failed to send message. Please try again.');
       }
     } catch (error) {
       setStatus('error');
-      setErrorMessage('An error occurred. Please try again later.');
+      setErrorMessage('Something went wrong. Please try again, or email us directly.');
       console.error('Error:', error);
     }
   };
 
+  const socialLinks = socialConfig.social_links || [];
+
   return (
-    <main>
-      <Navigation config={navConfig} />
+    <main className="gp min-h-screen">
+      <Navigation />
 
-      {/* Hero Section */}
-      <section className="bg-black text-white py-10 sm:py-12">
-        <div className="container-custom">
-          <h1 className="heading-display mb-4 text-yellow-400">GET IN TOUCH</h1>
-          <p className="text-lg sm:text-xl text-gray-300">
-            Have a question or want to collaborate? We'd love to hear from you.
+      <section className="gp-container pt-12 sm:pt-14 pb-20 sm:pb-24 flex flex-wrap gap-14 items-start">
+        <div className="flex-[1_1_440px] min-w-0">
+          <p className="gp-mono text-sm uppercase mb-3">Bookings · collabs · hello</p>
+          <h1 className="gp-display text-[clamp(60px,7.5vw,128px)] leading-[0.84]">
+            Get in
+            <br />
+            <span className="text-poster">touch.</span>
+          </h1>
+          <p className="mt-7 mb-10 text-lg sm:text-[19px] leading-normal max-w-[40ch]">
+            Have a question or want to collaborate? We&apos;d love to hear from you.
           </p>
+
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="flex justify-between items-center gap-4 p-5 sm:p-6 bg-ink text-paper mb-4 hover:bg-poster transition-colors"
+          >
+            <span className="min-w-0">
+              <span className="block gp-mono text-xs uppercase text-poster-light">Email · bookings &amp; inquiries</span>
+              <span className="block mt-1.5 font-poster text-lg sm:text-[clamp(20px,2.2vw,30px)] break-all">
+                {CONTACT_EMAIL}
+              </span>
+            </span>
+            <span aria-hidden="true" className="text-3xl">↗</span>
+          </a>
+          <a
+            href={CONTACT_PHONE_HREF}
+            className="flex justify-between items-center gap-4 p-5 sm:p-6 border-[3px] border-ink hover:bg-ink hover:text-paper transition-colors"
+          >
+            <span>
+              <span className="block gp-mono text-xs uppercase">Call us</span>
+              <span className="block mt-1.5 font-poster text-lg sm:text-[clamp(20px,2.2vw,30px)]">{CONTACT_PHONE}</span>
+            </span>
+            <span aria-hidden="true" className="text-3xl">↗</span>
+          </a>
+
+          {socialLinks.length > 0 && (
+            <nav aria-label="Follow us" className="flex flex-wrap gap-2.5 mt-6 gp-mono text-sm font-bold">
+              {socialLinks.map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-2 border-ink px-3.5 py-2.5 hover:bg-ink hover:text-paper transition-colors"
+                >
+                  {link.platform}
+                </a>
+              ))}
+            </nav>
+          )}
         </div>
-      </section>
 
-      {/* Contact Form Section */}
-      <section className="py-10 sm:py-12 bg-black">
-        <div className="container-custom max-w-2xl">
-          <h2 className="heading-lg mb-8 text-white text-center">Send us a message</h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-300 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
-                placeholder="Your name"
-              />
-            </div>
+        <form
+          onSubmit={handleSubmit}
+          className="flex-[1_1_500px] min-w-0 bg-white border-[3px] border-ink shadow-hard-red"
+        >
+          <h2 className="px-5 sm:px-6 py-4 border-b-[3px] border-ink font-poster uppercase text-2xl sm:text-[28px]">
+            Send us a message
+          </h2>
+          <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <label className="gp-label sm:col-span-2">
+              Name
+              <input type="text" name="name" value={formData.name} onChange={handleChange} required autoComplete="name" className="gp-input" />
+            </label>
+            <label className="gp-label">
+              Email
+              <input type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="email" className="gp-input" />
+            </label>
+            <label className="gp-label">
+              <span>
+                Phone number <span className="font-normal normal-case">(optional)</span>
+              </span>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} autoComplete="tel" placeholder="+91 98765 43210" className="gp-input" />
+            </label>
 
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-300 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
-                placeholder="your@email.com"
-              />
-            </div>
+            <fieldset className="sm:col-span-2">
+              <legend className="gp-mono text-[13px] font-bold uppercase mb-2">
+                What&apos;s it about? <span className="font-normal normal-case">(optional)</span>
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {TOPICS.map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    aria-pressed={topic === t.label}
+                    onClick={() => pickTopic(t.label, t.prefix)}
+                    className={`min-h-[44px] px-4 border-2 border-ink font-bold ${
+                      topic === t.label ? 'bg-ink text-paper' : 'bg-white hover:bg-paper'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
 
-            {/* Phone Field */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-semibold text-gray-300 mb-2">
-                Phone Number 
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors"
-                placeholder="+91 9876543210"
-              />
-            </div>
+            <label className="gp-label sm:col-span-2">
+              Message
+              <textarea name="message" value={formData.message} onChange={handleChange} required rows={6} className="gp-input resize-y" />
+            </label>
 
-            {/* Message Field */}
-            <div>
-              <label htmlFor="message" className="block text-sm font-semibold text-gray-300 mb-2">
-                Message
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                required
-                rows={6}
-                className="w-full px-4 py-3 bg-gray-800 border-2 border-gray-600 text-white rounded-lg focus:outline-none focus:border-yellow-500 transition-colors resize-none"
-                placeholder="Your message..."
-              />
-            </div>
-
-            {/* Status Messages */}
             {status === 'success' && (
-              <div className="bg-green-900 border-l-4 border-green-500 p-4 rounded">
-                <p className="text-green-300 font-semibold">
-                  ✓ Thank you! Your message has been sent. We'll get back to you soon.
-                </p>
-              </div>
+              <p role="status" className="sm:col-span-2 gp-mono text-sm p-4 bg-ink text-paper">
+                ✓ Sent! Thanks for writing. We&apos;ll reply to your email soon.
+              </p>
             )}
-
             {status === 'error' && (
-              <div className="bg-red-900 border-l-4 border-red-500 p-4 rounded">
-                <p className="text-red-300 font-semibold">✗ {errorMessage}</p>
-              </div>
+              <p role="alert" className="sm:col-span-2 gp-mono text-sm p-4 border-[3px] border-poster text-poster-dark bg-[#FFF4F2]">
+                ✗ {errorMessage}
+              </p>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="sm:col-span-2 gp-btn gp-btn-red min-h-[60px] text-lg uppercase tracking-wide disabled:opacity-60"
             >
-              {status === 'loading' ? 'Sending...' : 'Send Message'}
+              {status === 'loading' ? 'Sending…' : 'Send message →'}
             </button>
-          </form>
-        </div>
-      </section>
-
-      {/* Info Section */}
-      <section className="py-10 sm:py-12 bg-gray-900">
-        <div className="container-custom">
-          <h2 className="heading-lg text-center mb-12 text-white">Contact Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {/* Email */}
-            <div className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors border border-gray-700">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="w-8 h-8 text-yellow-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">Email Us</h3>
-                  <a
-                    href="mailto:taranabandinfo@gmail.com"
-                    className="text-yellow-400 hover:text-yellow-300 transition-colors break-all"
-                  >
-                    taranabandinfo@gmail.com
-                  </a>
-                  <p className="text-gray-400 text-sm mt-2">For bookings and inquiries</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div className="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors border border-gray-700">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="w-8 h-8 text-yellow-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">Call Us</h3>
-                  <a
-                    href="tel:+919449562419"
-                    className="text-yellow-400 hover:text-yellow-300 transition-colors"
-                  >
-                    +91 94495 62419
-                  </a>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
+        </form>
       </section>
 
       <Footer />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -12,22 +13,23 @@ export default function AdminLoginPage() {
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!supabase) {
       setError('Supabase is not configured. Please check your environment variables.');
       return;
     }
-    e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (authError) {
-        setError(authError.message);
+        setError(
+          authError.message === 'Invalid login credentials'
+            ? "That email and password don't match. Try again."
+            : authError.message
+        );
         return;
       }
 
@@ -35,7 +37,7 @@ export default function AdminLoginPage() {
         router.push('/admin/dashboard');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('Something went wrong. Please try again.');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -43,61 +45,74 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-2xl p-8 border border-gray-700">
-        <h1 className="text-4xl font-bold text-center mb-2 text-gold">TARANA</h1>
-        <h2 className="text-xl font-semibold text-center mb-8 text-gray-300">Admin Login</h2>
-
-        {error && (
-          <div className="bg-red-900/30 border-l-4 border-red-600 p-4 rounded mb-6">
-            <p className="text-red-300 font-semibold">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-300 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-gold text-white placeholder-gray-500"
-              placeholder="admin@tarana.band"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-300 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-gold text-white placeholder-gray-500"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gold hover:bg-gold-light text-black font-semibold py-2 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-400 mt-6 text-sm">
-          Back to <a href="/" className="text-gold hover:text-gold-light transition-colors">website</a>
+    <div className="min-h-screen flex flex-wrap bg-paper text-ink font-archivo">
+      <section className="flex-[1_1_520px] min-w-0 bg-ink text-paper p-8 sm:p-14 flex flex-col justify-between gap-10">
+        <img src="/logo-white.png" alt="Tarana" className="h-16 w-auto self-start" />
+        <div>
+          <p className="gp-mono text-sm uppercase text-poster-light mb-4">Band only</p>
+          <h1 className="gp-display text-[clamp(72px,9vw,140px)] leading-[0.84]">
+            Back
+            <br />
+            stage<span className="text-poster">.</span>
+          </h1>
+          <p className="mt-6 text-lg leading-relaxed text-[#D6D0C4] max-w-[36ch]">
+            Shows, merch orders, photos, videos and messages. Everything that runs taranaband.in.
+          </p>
+        </div>
+        <p className="gp-mono text-xs text-[#B8B2A6]">
+          Not in the band?{' '}
+          <Link href="/" className="text-paper underline underline-offset-4">
+            Back to the site →
+          </Link>
         </p>
-      </div>
+      </section>
+
+      <section className="flex-[1_1_440px] min-w-0 flex items-center justify-center px-6 py-14">
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-[440px] bg-white border-[3px] border-ink shadow-hard-red"
+        >
+          <h2 className="px-6 py-4 border-b-[3px] border-ink font-poster uppercase text-[28px]">Sign in</h2>
+          <div className="p-6 flex flex-col gap-5">
+            <label className="gp-label">
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="gp-input"
+              />
+            </label>
+            <label className="gp-label">
+              Password
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'login-error' : undefined}
+                className="gp-input"
+              />
+            </label>
+            {error && (
+              <p id="login-error" role="alert" className="gp-mono text-[13px] text-poster-dark -mt-2">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="gp-btn gp-btn-ink min-h-[58px] text-[17px] uppercase tracking-wide disabled:opacity-60"
+            >
+              {loading ? 'Signing in…' : 'Sign in →'}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }
