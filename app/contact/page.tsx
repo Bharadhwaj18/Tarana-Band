@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation';
 import Footer, { CONTACT_EMAIL, CONTACT_PHONE, CONTACT_PHONE_HREF } from '@/components/Footer';
 import { useAppConfig } from '@/components/AppConfigProvider';
 import { trackEvent } from '@/lib/analytics';
+import { BUSINESS } from '@/lib/business';
 
 // Topic chips only pre-fill the start of the message; the form sends exactly the same fields
 const TOPICS = [
@@ -106,6 +107,9 @@ export default function ContactPage() {
             </span>
             <span aria-hidden="true" className="text-3xl">↗</span>
           </a>
+          <p className="mt-4 gp-mono text-sm">
+            Operated by {BUSINESS.operator} · {BUSINESS.location}
+          </p>
 
           {socialLinks.length > 0 && (
             <nav aria-label="Follow us" className="flex flex-wrap gap-2.5 mt-6 gp-mono text-sm font-bold">

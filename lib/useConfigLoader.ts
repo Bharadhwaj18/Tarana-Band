@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { IS_LOCAL_DEV } from './pageVisibility';
 
 export interface NavigationConfig {
   logo_black?: string;
@@ -64,11 +65,12 @@ export function useConfigLoader(): FullConfig {
           const navCfg: NavigationConfig = {
             logo_black: generalConfig.branding?.logo_black,
             logo_white: generalConfig.branding?.logo_white,
-            show_about: generalConfig.navigation?.show_about !== false,
-            show_tours: generalConfig.navigation?.show_tours !== false,
-            show_merch: generalConfig.navigation?.show_merch !== false,
-            show_videos: generalConfig.navigation?.show_videos !== false,
-            show_contact: generalConfig.navigation?.show_contact !== false,
+            // Locally (npm run dev) every page shows in the menu; switches only apply on the hosted site
+            show_about: IS_LOCAL_DEV || generalConfig.navigation?.show_about !== false,
+            show_tours: IS_LOCAL_DEV || generalConfig.navigation?.show_tours !== false,
+            show_merch: IS_LOCAL_DEV || generalConfig.navigation?.show_merch !== false,
+            show_videos: IS_LOCAL_DEV || generalConfig.navigation?.show_videos !== false,
+            show_contact: IS_LOCAL_DEV || generalConfig.navigation?.show_contact !== false,
           };
           setNavConfig(navCfg);
 

@@ -3,7 +3,11 @@
 
 export type PageKey = 'show_about' | 'show_tours' | 'show_merch' | 'show_videos' | 'show_contact';
 
+/** Running `npm run dev` on your own machine: every page stays open so you can work on it */
+export const IS_LOCAL_DEV = process.env.NODE_ENV === 'development';
+
 export async function getNavigationFlags(): Promise<Partial<Record<PageKey, boolean>> | null> {
+  if (IS_LOCAL_DEV) return {};
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;

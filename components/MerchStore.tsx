@@ -746,6 +746,12 @@ export default function MerchStore() {
                     <br />
                     UPI · Cards · Netbanking · Wallets
                   </p>
+                  <p className="mt-3 text-xs leading-relaxed text-center text-muted">
+                    By paying you agree to our{' '}
+                    <a href="/terms" target="_blank" className="underline underline-offset-2">Terms</a>,{' '}
+                    <a href="/refund-policy" target="_blank" className="underline underline-offset-2">Refund</a> and{' '}
+                    <a href="/shipping-policy" target="_blank" className="underline underline-offset-2">Shipping</a> policies.
+                  </p>
                 </aside>
               </form>
             )}

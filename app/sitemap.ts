@@ -11,6 +11,10 @@ const PAGES: Array<{ path: string; key?: PageKey }> = [
   { path: '/merch', key: 'show_merch' },
   { path: '/videos', key: 'show_videos' },
   { path: '/contact', key: 'show_contact' },
+  { path: '/terms' },
+  { path: '/privacy' },
+  { path: '/refund-policy' },
+  { path: '/shipping-policy' },
 ];
 
 // Pages switched off in admin are left out so Google doesn't index them

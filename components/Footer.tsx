@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAppConfig } from './AppConfigProvider';
+import { BUSINESS, POLICY_LINKS } from '@/lib/business';
 
 export const CONTACT_EMAIL = 'taranabandinfo@gmail.com';
 export const CONTACT_PHONE = '+91 94495 62419';
@@ -77,8 +78,19 @@ export default function Footer() {
         <div className="pt-6 border-t border-[#3A3833] flex items-center flex-wrap justify-between gap-4 gp-mono text-xs text-[#B8B2A6]">
           <div className="flex items-center gap-4">
             {logoWhite && <img src={logoWhite} alt="Tarana" className="h-10 w-auto" />}
-            <p>© {currentYear} Tarana. All rights reserved.</p>
+            <p>
+              © {currentYear} Tarana. All rights reserved.
+              <br />
+              Merch sold by {BUSINESS.operator}, {BUSINESS.location}.
+            </p>
           </div>
+          <nav aria-label="Policies" className="flex flex-wrap gap-x-5 gap-y-2">
+            {POLICY_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="inline-flex items-center min-h-[32px] hover:text-paper underline-offset-2 hover:underline">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
           <Link
             href="/admin"
             className="inline-flex items-center min-h-[44px] px-4 border border-[#6B665C] text-paper uppercase hover:bg-paper hover:text-ink transition-colors"
