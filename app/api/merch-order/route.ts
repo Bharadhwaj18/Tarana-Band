@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createRazorpayOrder, getRazorpayKeyId, isRazorpayConfigured, toPaise } from '@/lib/razorpay';
+import { isPageEnabled } from '@/lib/pageVisibility';
 
 // Starts checkout: checks the cart against the database, saves the order as pending_payment
 // and creates the matching Razorpay order. The order is only confirmed after payment
 // (see /api/merch-order/verify and /api/razorpay/webhook).
 export async function POST(request: NextRequest) {
   try {
+    // No new orders while the merch page is switched off in admin
+    if (!(await isPageEnabled('show_merch'))) {
+      return NextResponse.json({ error: 'The merch store is closed right now.' }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => null);
     if (!body) {
       return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });

@@ -1,12 +1,15 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import TourTicketButton from '@/components/TourTicketButton';
 import { getTourStatus } from '@/lib/tours';
 import { SHARE_IMAGE } from '@/lib/seo';
+import { isPageEnabled } from '@/lib/pageVisibility';
 import type { Metadata } from 'next';
 
-export const revalidate = 60; // Revalidate every 60 seconds (ISR)
+// Rendered per request so the admin page switch and date-based Upcoming/Past are always current
+export const dynamic = 'force-dynamic';
 
 const description = 'Upcoming Tarana shows and tour dates, with tickets. Catch the band live on stage.';
 const INSTAGRAM_URL = 'https://www.instagram.com/tarana_theband/';
@@ -85,6 +88,7 @@ function dateParts(dateString: string) {
 }
 
 export default async function ToursPage() {
+  if (!(await isPageEnabled('show_tours'))) notFound();
   const { upcoming, past, heroPhoto } = await getPageData();
 
   // Past shows grouped by year, newest first

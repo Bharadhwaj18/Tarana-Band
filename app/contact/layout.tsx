@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { SHARE_IMAGE } from '@/lib/seo';
+import { isPageEnabled } from '@/lib/pageVisibility';
 
 const description = 'Get in touch with Tarana. Send us a message through the website contact form.';
 
@@ -20,6 +22,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ContactLayout({ children }: { children: React.ReactNode }) {
+// Checked on every request so switching the page off in admin hides it straight away
+export const dynamic = 'force-dynamic';
+
+export default async function ContactLayout({ children }: { children: React.ReactNode }) {
+  if (!(await isPageEnabled('show_contact'))) notFound();
   return children;
 }

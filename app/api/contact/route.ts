@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
 import { contactBandEmail } from '@/lib/emailTemplates';
+import { isPageEnabled } from '@/lib/pageVisibility';
 
 interface ContactFormData {
   name: string;
@@ -12,6 +13,10 @@ interface ContactFormData {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await isPageEnabled('show_contact'))) {
+      return NextResponse.json({ error: 'The contact form is closed right now.' }, { status: 403 });
+    }
+
     const body: ContactFormData = await request.json();
 
     // Validate input
