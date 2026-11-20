@@ -225,7 +225,7 @@ export function orderConfirmedEmail(order: OrderLike, paymentId: string) {
       accent: 'Thank you.',
       body: [
         paragraph(`Hi ${name}, your payment went through and your order is confirmed. Every tee helps us play more shows and record more music.`),
-        receipt(order, [`PAID VIA RAZORPAY · ${escapeHtml(paymentId)}`]),
+        receipt(order, [`PAID VIA PHONEPE · ${escapeHtml(paymentId)}`]),
         details([['Shipping to', addressHtml(order)]]),
         paragraph(`We ship via India Post. You'll get another email with the tracking number as soon as it's on its way.`),
         button('Visit taranaband.in', SITE_URL),
@@ -244,7 +244,7 @@ export function newOrderBandEmail(order: OrderLike, paymentId: string) {
       title: 'Pack it',
       accent: 'Ship it.',
       body: [
-        receipt(order, [`RAZORPAY PAYMENT · ${escapeHtml(paymentId)}`]),
+        receipt(order, [`PHONEPE PAYMENT · ${escapeHtml(paymentId)}`]),
         details([
           ['Customer', escapeHtml(order.customer_name)],
           ['Phone', `<a href="tel:${escapeHtml(order.phone)}" style="color:${INK};">${escapeHtml(order.phone)}</a>`],

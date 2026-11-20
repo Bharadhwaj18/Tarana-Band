@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { IS_LOCAL_DEV } from './pageVisibility';
+import { IS_LOCAL_DEV } from './localDev';
 
 export interface NavigationConfig {
   logo_black?: string;

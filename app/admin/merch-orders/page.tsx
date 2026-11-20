@@ -20,6 +20,8 @@ interface MerchOrder {
   total_amount: number;
   payment_proof_url?: string | null;
   razorpay_payment_id?: string | null;
+  payment_gateway?: string | null;
+  gateway_payment_id?: string | null;
   paid_at?: string | null;
   refund_proof_url?: string | null;
   cancellation_reason?: string | null;
@@ -216,9 +218,10 @@ export default function AdminMerchOrdersPage() {
                   <span className="text-xs text-gray-500">
                     {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
-                  {order.razorpay_payment_id && (
+                  {(order.gateway_payment_id || order.razorpay_payment_id) && (
                     <span className="text-sm text-green-400">
-                      Paid via Razorpay · <span className="font-mono">{order.razorpay_payment_id}</span>
+                      Paid via {order.gateway_payment_id ? 'PhonePe' : 'Razorpay'} ·{' '}
+                      <span className="font-mono">{order.gateway_payment_id || order.razorpay_payment_id}</span>
                     </span>
                   )}
                   {order.payment_proof_url && (
