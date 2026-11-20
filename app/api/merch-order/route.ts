@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createPhonePePayment, isPhonePeConfigured, toPaise } from '@/lib/phonepe';
 import { isPageEnabled } from '@/lib/pageVisibility';
+import { reconcileStaleOrders } from '@/lib/merchOrders';
 
 // Starts checkout: checks the cart against the database, saves the order as pending_payment
 // and starts a PhonePe payment for it. The order is only confirmed after payment
@@ -47,6 +48,9 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    // Settle abandoned checkouts first, so a late payment is confirmed and stock below is up to date
+    await reconcileStaleOrders(supabase).catch((error) => console.error('Stale order sweep failed:', error));
 
     // Prices and stock come from the database, never from the browser
     const productIds = Array.from(new Set(cartItems.map((item: any) => String(item?.product?.id || ''))));

@@ -47,11 +47,14 @@ async function getAccessToken(): Promise<string> {
   if (!res.ok || !data?.access_token) {
     throw new Error(data?.message || `PhonePe login failed (${res.status})`);
   }
-  cachedToken = { value: data.access_token, expiresAt: Number(data.expires_at) || nowSeconds + 600 };
+  // PhonePe's docs don't say whether expires_at is in seconds or milliseconds, so accept both
+  const rawExpiry = Number(data.expires_at);
+  const expiresAt = rawExpiry > 1e12 ? Math.floor(rawExpiry / 1000) : rawExpiry;
+  cachedToken = { value: data.access_token, expiresAt: expiresAt || nowSeconds + 300 };
   return cachedToken.value;
 }
 
-async function phonePeRequest(path: string, method: 'GET' | 'POST', body?: unknown) {
+async function phonePeRequest(path: string, method: 'GET' | 'POST', body?: unknown, retried = false): Promise<any> {
   const token = await getAccessToken();
   const res = await fetch(`${PG_BASE}${path}`, {
     method,
@@ -59,6 +62,11 @@ async function phonePeRequest(path: string, method: 'GET' | 'POST', body?: unkno
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
   });
+  // A rejected token (expired early, or rotated) is refreshed once and the request repeated
+  if (res.status === 401 && !retried) {
+    cachedToken = null;
+    return phonePeRequest(path, method, body, true);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data?.message || data?.code || `PhonePe request failed (${res.status})`);

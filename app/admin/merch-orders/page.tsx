@@ -34,15 +34,20 @@ interface MerchOrder {
 
 type Tab = 'confirmed' | 'shipped' | 'cancelled' | 'pending_payment' | 'all';
 
+// Unpaid = checkouts that were never paid: still in progress, or failed/expired at PhonePe
+const isUnpaid = (status: string) => status === 'pending_payment' || status === 'payment_failed';
+
 const STATUS_BADGE: Record<string, string> = {
   confirmed: 'bg-yellow-900/50 text-yellow-300',
   shipped:   'bg-blue-900/50 text-blue-300',
   cancelled: 'bg-red-900/50 text-red-400',
   pending_payment: 'bg-gray-700 text-gray-400',
+  payment_failed: 'bg-gray-700 text-gray-400',
 };
 
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: 'unpaid',
+  payment_failed: 'unpaid · expired',
 };
 
 export default function AdminMerchOrdersPage() {
@@ -88,8 +93,10 @@ export default function AdminMerchOrdersPage() {
   // Unpaid orders are checkouts where the customer never finished paying; keep them out of "All"
   const ordersInTab = (tab: Tab) =>
     tab === 'all'
-      ? orders.filter((o) => o.status !== 'pending_payment')
-      : orders.filter((o) => o.status === tab);
+      ? orders.filter((o) => !isUnpaid(o.status))
+      : tab === 'pending_payment'
+        ? orders.filter((o) => isUnpaid(o.status))
+        : orders.filter((o) => o.status === tab);
 
   const filteredOrders = ordersInTab(activeTab);
 

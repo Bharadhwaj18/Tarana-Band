@@ -52,6 +52,47 @@ async function verifyPayment(orderId: string): Promise<VerifyResult> {
   }
 }
 
+// PhonePe requires a payment that is still pending to be re-checked on a fixed schedule until it finishes or
+// the order expires (20 min): first check ~22s after starting, then every 3s for 30s, every 6s for 60s,
+// every 10s for 60s, every 30s for 60s, then every minute. Offsets are ms after the payment was started.
+const ORDER_EXPIRY_MS = 20 * 60 * 1000;
+const RECHECK_OFFSETS: number[] = (() => {
+  const offsets = [22_000];
+  const stages: Array<[step: number, length: number]> = [
+    [3_000, 30_000],
+    [6_000, 60_000],
+    [10_000, 60_000],
+    [30_000, 60_000],
+  ];
+  let t = 22_000;
+  for (const [step, length] of stages) {
+    for (let end = t + length; t < end; ) offsets.push((t += step));
+  }
+  while (t < ORDER_EXPIRY_MS + 30_000) offsets.push((t += 60_000));
+  return offsets;
+})();
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Checks now, and while PhonePe still says pending keeps checking on the schedule above */
+async function pollPayment(
+  orderId: string,
+  startedAt: number,
+  shouldStop: () => boolean,
+  onPending: () => void
+): Promise<VerifyResult> {
+  let result = await verifyPayment(orderId);
+  for (const offset of RECHECK_OFFSETS) {
+    if (result.state !== 'PENDING' || shouldStop()) return result;
+    onPending();
+    const wait = startedAt + offset - Date.now();
+    if (wait > 0) await sleep(wait);
+    if (shouldStop()) return result;
+    result = await verifyPayment(orderId);
+  }
+  return result;
+}
+
 interface MerchCheckoutConfig {
   disclaimer?: string;
 }
@@ -144,6 +185,13 @@ export default function MerchStore() {
   const [toast, setToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // Fetch products + checkout config; realtime keeps stock current
   useEffect(() => {
@@ -191,7 +239,59 @@ export default function MerchStore() {
     };
   }, []);
 
-  // Back from PhonePe's own page (/merch?order=<id>): check the payment and show the receipt or what went wrong
+  // Checks a started payment with PhonePe (re-checking while it is pending) and shows the receipt or what went wrong.
+  // `local` is the cart as the customer saw it; after a redirect from PhonePe the server supplies it instead.
+  const settlePayment = async (
+    orderId: string,
+    startedAt: number,
+    local?: { items: CartItem[]; total: number; email: string; analyticsItems: unknown[] }
+  ) => {
+    setSubmitting(true);
+    setCheckoutInfo('Confirming your payment…');
+    const verified = await pollPayment(
+      orderId,
+      startedAt,
+      () => !mounted.current,
+      () => setCheckoutInfo('Your payment is still processing with your bank. Please keep this page open…')
+    );
+    if (!mounted.current) return;
+    setCheckoutInfo('');
+    setSubmitting(false);
+
+    const ref = orderId.slice(0, 8).toUpperCase();
+    if (verified.state === 'COMPLETED') {
+      trackEvent('purchase', {
+        transaction_id: orderId,
+        currency: 'INR',
+        value: local?.total ?? verified.total,
+        items: local?.analyticsItems,
+      });
+      setConfirmed({
+        orderId,
+        items: local?.items ?? verified.items,
+        total: local?.total ?? verified.total,
+        emailSent: verified.emailSent,
+        email: local?.email ?? verified.email,
+      });
+      if (local) {
+        setCart([]);
+        setFormData(EMPTY_FORM);
+        setTouched({});
+      }
+    } else if (verified.state === 'PENDING') {
+      setCheckoutError(
+        `Your payment is still processing with your bank. Don't pay again: we'll email you as soon as it's confirmed. Order #${ref}.`
+      );
+    } else if (verified.state === 'FAILED') {
+      setCheckoutError(
+        'Payment failed, so your order has not been placed. Your bag and details are saved, so you can try again.'
+      );
+    } else {
+      setCheckoutError(`${verified.error} If money was deducted, please contact us with order #${ref}.`);
+    }
+  };
+
+  // Back from PhonePe's own page (/merch?order=<id>)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const returnedOrder = params.get('order');
@@ -199,27 +299,9 @@ export default function MerchStore() {
     window.history.replaceState(null, '', window.location.pathname);
 
     setIsCartOpen(true);
-    setCheckoutInfo('Confirming your payment…');
-    verifyPayment(returnedOrder).then((verified) => {
-      setCheckoutInfo('');
-      const ref = returnedOrder.slice(0, 8).toUpperCase();
-      if (verified.state === 'COMPLETED') {
-        trackEvent('purchase', { transaction_id: verified.orderId, currency: 'INR', value: verified.total });
-        setConfirmed({
-          orderId: verified.orderId,
-          items: verified.items,
-          total: verified.total,
-          emailSent: verified.emailSent,
-          email: verified.email,
-        });
-      } else if (verified.state === 'PENDING') {
-        setCheckoutError(`Your payment is still processing with your bank. Don't pay again: we'll email you as soon as it's confirmed. Order #${ref}.`);
-      } else if (verified.state === 'FAILED') {
-        setCheckoutError('Payment was not completed, so no money was taken and your order has not been placed.');
-      } else {
-        setCheckoutError(`${verified.error} If money was deducted, please contact us with order #${ref}.`);
-      }
-    });
+    // We don't know exactly when it started, so carry on from the 3-second part of the schedule
+    settlePayment(returnedOrder, Date.now() - 30_000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Bag panel: Escape closes it (unless a payment is in progress) and the page behind stops scrolling
@@ -353,6 +435,7 @@ export default function MerchStore() {
         throw new Error(data.error || 'Failed to start checkout.');
       }
 
+      const startedAt = Date.now();
       window.PhonePeCheckout.transact({
         tokenUrl: data.payUrl,
         type: 'IFRAME',
@@ -364,39 +447,12 @@ export default function MerchStore() {
           }
 
           // CONCLUDED: the pay page finished; the server checks the outcome with PhonePe
-          setCheckoutInfo('Confirming your payment…');
-          const verified = await verifyPayment(data.orderId);
-          setCheckoutInfo('');
-          setSubmitting(false);
-
-          if (verified.state === 'COMPLETED') {
-            trackEvent('purchase', {
-              transaction_id: data.orderId,
-              currency: 'INR',
-              value: orderValue,
-              items: analyticsItems,
-            });
-            setConfirmed({
-              orderId: data.orderId,
-              items: orderItems,
-              total: orderValue,
-              emailSent: verified.emailSent,
-              email: customerEmail,
-            });
-            setCart([]);
-            setFormData(EMPTY_FORM);
-            setTouched({});
-          } else if (verified.state === 'PENDING') {
-            setCheckoutError(
-              `Your payment is still processing with your bank. Don't pay again: we'll email ${customerEmail} as soon as it's confirmed. Order #${data.orderId.slice(0, 8).toUpperCase()}.`
-            );
-          } else if (verified.state === 'FAILED') {
-            setCheckoutError('Payment failed, so your order has not been placed. Your bag and details are saved, so you can try again.');
-          } else {
-            setCheckoutError(
-              `${verified.error} If money was deducted, please contact us with order #${data.orderId.slice(0, 8).toUpperCase()}.`
-            );
-          }
+          await settlePayment(data.orderId, startedAt, {
+            items: orderItems,
+            total: orderValue,
+            email: customerEmail,
+            analyticsItems,
+          });
         },
       });
     } catch (error: any) {

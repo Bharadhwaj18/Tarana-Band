@@ -32,6 +32,7 @@ const STATUS_STYLE: Record<string, { label: string; className: string }> = {
   shipped: { label: 'Shipped', className: 'bg-ink text-paper' },
   cancelled: { label: 'Cancelled', className: 'border border-ink' },
   pending_payment: { label: 'Unpaid', className: 'border border-muted text-muted' },
+  payment_failed: { label: 'Unpaid · expired', className: 'border border-muted text-muted' },
 };
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -197,7 +198,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {recent.map((order) => {
                     const style = STATUS_STYLE[order.status] || { label: order.status, className: 'border border-ink' };
-                    const muted = order.status === 'pending_payment';
+                    const muted = order.status === 'pending_payment' || order.status === 'payment_failed';
                     return (
                       <tr key={order.id} className={`border-b border-rule last:border-0 ${muted ? 'text-muted' : ''}`}>
                         <td className="px-5 py-3.5 gp-mono">#{order.id.slice(0, 8).toUpperCase()}</td>
