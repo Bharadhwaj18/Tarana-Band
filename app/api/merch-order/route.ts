@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createPhonePePayment, isPhonePeConfigured, toPaise } from '@/lib/phonepe';
 import { isPageEnabled } from '@/lib/pageVisibility';
 import { reconcileStaleOrders } from '@/lib/merchOrders';
+import { getCatalog, type CatalogProduct } from '@/lib/merchCatalog';
 
 // Starts checkout: checks the cart against the database, saves the order as pending_payment
 // and starts a PhonePe payment for it. The order is only confirmed after payment
@@ -52,15 +53,18 @@ export async function POST(request: NextRequest) {
     // Settle abandoned checkouts first, so a late payment is confirmed and stock below is up to date
     await reconcileStaleOrders(supabase).catch((error) => console.error('Stale order sweep failed:', error));
 
-    // Prices and stock come from the database, never from the browser
+    // Prices come from our database and stock live from Rigly, never from the browser.
+    // If Rigly can't be reached we don't take money for something that may be gone.
     const productIds = Array.from(new Set(cartItems.map((item: any) => String(item?.product?.id || ''))));
-    const { data: products, error: productsError } = await supabase
-      .from('merchandise')
-      .select('id, name, price, is_active, size_stock, image_url')
-      .in('id', productIds);
-
-    if (productsError) {
-      return NextResponse.json({ error: 'Could not verify your cart. Please try again.' }, { status: 500 });
+    let products: CatalogProduct[];
+    try {
+      ({ products } = await getCatalog(supabase, { requireLive: true, ids: productIds }));
+    } catch (error) {
+      console.error('Checkout stock check failed:', error);
+      return NextResponse.json(
+        { error: "We couldn't check stock just now. Please try again in a minute." },
+        { status: 503 }
+      );
     }
 
     const items: any[] = [];
@@ -68,7 +72,7 @@ export async function POST(request: NextRequest) {
     let calculatedTotal = 0;
 
     for (const cartItem of cartItems) {
-      const product = (products || []).find((p: any) => p.id === cartItem?.product?.id);
+      const product = products.find((p) => p.id === cartItem?.product?.id);
       const size = String(cartItem?.size || '');
       const quantity = Number(cartItem?.quantity);
 
@@ -82,22 +86,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid cart data.' }, { status: 400 });
       }
 
-      const stock = product.size_stock;
-      if (stock && Object.keys(stock).length > 0) {
-        const key = `${product.id}:${size}`;
-        requested[key] = (requested[key] || 0) + quantity;
-        const available = Number(stock[size] ?? 0);
-        if (requested[key] > available) {
-          return NextResponse.json(
-            {
-              error:
-                available > 0
-                  ? `Only ${available} left of ${product.name} (${size}). Please update your cart.`
-                  : `${product.name} (${size}) is sold out. Please update your cart.`,
-            },
-            { status: 400 }
-          );
-        }
+      const variantId = product.variant_ids[size];
+      if (!variantId) {
+        return NextResponse.json(
+          { error: `${product.name} (${size}) isn't available any more. Please refresh and try again.` },
+          { status: 400 }
+        );
+      }
+      const key = `${product.id}:${size}`;
+      requested[key] = (requested[key] || 0) + quantity;
+      const available = Number(product.size_stock[size] ?? 0);
+      if (requested[key] > available) {
+        return NextResponse.json(
+          {
+            error:
+              available > 0
+                ? `Only ${available} left of ${product.name} (${size}). Please update your cart.`
+                : `${product.name} (${size}) is sold out. Please update your cart.`,
+          },
+          { status: 400 }
+        );
       }
 
       calculatedTotal += Number(product.price) * quantity;
@@ -105,6 +113,7 @@ export async function POST(request: NextRequest) {
         product: { id: product.id, name: product.name, price: product.price, image_url: product.image_url },
         size,
         quantity,
+        variant_id: variantId,
       });
     }
 

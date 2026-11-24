@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/adminAuth';
-import { sendEmail } from '@/lib/email';
-import { orderShippedEmail } from '@/lib/emailTemplates';
+import { shipOrder } from '@/lib/merchFulfilment';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,55 +17,17 @@ export async function POST(request: NextRequest) {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'Supabase server config is missing.' }, { status: 500 });
     }
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: order, error: fetchError } = await supabase
-      .from('merch_orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
-
-    if (fetchError || !order) {
-      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
-    }
-
-    if (order.status !== 'confirmed') {
-      return NextResponse.json(
-        { error: `Order cannot be shipped — current status is "${order.status}".` },
-        { status: 400 }
-      );
-    }
-
-    const { error: updateError } = await supabase
-      .from('merch_orders')
-      .update({
-        status: 'shipped',
-        shipped_at: new Date().toISOString(),
-        tracking_number: trackingNumber || null,
-        carrier: carrier || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', orderId);
-
-    if (updateError) {
-      return NextResponse.json({ error: `Order update failed: ${updateError.message}` }, { status: 500 });
-    }
-
-    const emailSent = await sendEmail({
-      to: order.email,
-      ...orderShippedEmail(order, carrier || null, trackingNumber || null),
-    });
+    // Updates the order, emails the customer and marks it shipped in Rigly
+    const result = await shipOrder(supabase, orderId, { trackingNumber, carrier });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
     return NextResponse.json({
       success: true,
-      emailSent,
-      message: emailSent
-        ? 'Order marked as shipped and customer notified.'
-        : 'Order marked as shipped, but the email to the customer could not be sent.',
+      emailSent: result.emailSent,
+      riglySynced: result.riglySynced,
+      message: result.message,
     });
   } catch (error) {
     console.error('Ship merch order error:', error);

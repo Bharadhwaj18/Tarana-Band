@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/adminAuth';
-import { sendEmail } from '@/lib/email';
-import { orderCancelledEmail } from '@/lib/emailTemplates';
-import { adjustStock } from '@/lib/merchStock';
-import { getProofExtension, validateProofImage } from '@/lib/uploads';
+import { cancelOrder } from '@/lib/merchFulfilment';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,84 +19,22 @@ export async function POST(request: NextRequest) {
     if (!refundProof) {
       return NextResponse.json({ error: 'Refund proof is required.' }, { status: 400 });
     }
-    const proofError = validateProofImage(refundProof);
-    if (proofError) {
-      return NextResponse.json({ error: proofError }, { status: 400 });
-    }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'Supabase server config is missing.' }, { status: 500 });
     }
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: order, error: fetchError } = await supabase
-      .from('merch_orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
-
-    if (fetchError || !order) {
-      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
-    }
-
-    if (order.status === 'cancelled') {
-      return NextResponse.json({ error: 'Order is already cancelled.' }, { status: 400 });
-    }
-
-    const proofPath = `merch-refund-proofs/${Date.now()}-${Math.random().toString(36).slice(2)}.${getProofExtension(refundProof)}`;
-
-    const uploadResult = await supabase.storage
-      .from('photos')
-      .upload(proofPath, refundProof, {
-        upsert: false,
-        contentType: refundProof.type,
-        cacheControl: '3600',
-      });
-
-    if (uploadResult.error) {
-      return NextResponse.json({ error: `Refund proof upload failed: ${uploadResult.error.message}` }, { status: 500 });
-    }
-
-    const { data: refundUrlData } = supabase.storage.from('photos').getPublicUrl(proofPath);
-    const refundProofUrl = refundUrlData.publicUrl;
-
-    const { error: updateError } = await supabase
-      .from('merch_orders')
-      .update({
-        status: 'cancelled',
-        cancellation_reason: reason || null,
-        refund_proof_url: refundProofUrl,
-        refund_proof_path: proofPath,
-        cancelled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', orderId);
-
-    if (updateError) {
-      // Don't leave an orphaned proof behind when the order wasn't cancelled
-      await supabase.storage.from('photos').remove([proofPath]);
-      return NextResponse.json({ error: `Order update failed: ${updateError.message}` }, { status: 500 });
-    }
-
-    // Put the cancelled items back into stock
-    await adjustStock(supabase, order.items, 1);
-
-    const emailSent = await sendEmail({
-      to: order.email,
-      ...orderCancelledEmail(order, reason || null, refundProofUrl),
-    });
+    // Updates the order, emails the customer and puts the stock back in Rigly
+    const result = await cancelOrder(supabase, orderId, { reason: reason || null, refundProof });
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
     return NextResponse.json({
       success: true,
-      emailSent,
-      message: emailSent
-        ? 'Order cancelled and customer notified.'
-        : 'Order cancelled, but the email to the customer could not be sent.',
-      refundProofUrl,
+      emailSent: result.emailSent,
+      riglySynced: result.riglySynced,
+      message: result.message,
+      refundProofUrl: result.refundProofUrl,
     });
   } catch (error) {
     console.error('Cancel merch order error:', error);

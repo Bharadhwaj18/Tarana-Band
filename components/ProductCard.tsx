@@ -44,7 +44,9 @@ export default function ProductCard({ product, index, inBag = {}, onAddToCart }:
   const [isExpanded, setIsExpanded] = useState(false);
   const stock = product.size_stock;
   const tracksSizes = !!stock && Object.keys(stock).length > 0;
-  const availableSizes = tracksSizes ? SIZE_OPTIONS.filter((s) => (stock![s] ?? 0) > 0) : [];
+  // Sizes come from Rigly in its own order (S, M, L... or Small / Large)
+  const sizes = tracksSizes ? Object.keys(stock!) : [];
+  const availableSizes = sizes.filter((s) => (stock![s] ?? 0) > 0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   const soldOut = tracksSizes && availableSizes.length === 0;
@@ -116,8 +118,11 @@ export default function ProductCard({ product, index, inBag = {}, onAddToCart }:
             {tracksSizes && (
               <fieldset>
                 <legend className="gp-mono text-[13px] uppercase mb-2">Size</legend>
-                <div className="grid grid-cols-5 border-2 border-ink">
-                  {SIZE_OPTIONS.map((size, i) => {
+                <div
+                  className="grid border-2 border-ink"
+                  style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(sizes.length, 1), 5)}, minmax(0, 1fr))` }}
+                >
+                  {sizes.map((size, i) => {
                     const sizeLeft = stock![size] ?? 0;
                     const isOut = sizeLeft <= 0;
                     const isSelected = effectiveSize === size;
@@ -129,7 +134,7 @@ export default function ProductCard({ product, index, inBag = {}, onAddToCart }:
                         aria-pressed={isSelected}
                         aria-label={isOut ? `${size}, sold out` : size}
                         onClick={() => setSelectedSize(size)}
-                        className={`min-h-[52px] gp-mono font-bold ${i < SIZE_OPTIONS.length - 1 ? 'border-r-2 border-ink' : ''} ${
+                        className={`min-h-[52px] gp-mono font-bold ${(i + 1) % 5 !== 0 && i < sizes.length - 1 ? 'border-r-2 border-ink' : ''} ${i >= 5 ? 'border-t-2 border-ink' : ''} ${
                           isOut
                             ? 'line-through text-muted bg-[repeating-linear-gradient(135deg,#F1ECE2_0_6px,#E2DCD0_6px_12px)] cursor-not-allowed'
                             : isSelected

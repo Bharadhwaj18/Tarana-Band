@@ -166,6 +166,7 @@ export default function Home() {
         .from('merchandise')
         .select('id, name, price, image_url, image_urls, image_positions')
         .eq('is_active', true)
+        .not('rigly_item_id', 'is', null)
         .order('order_position', { ascending: true })
         .limit(2);
       setMerch(merchData || []);

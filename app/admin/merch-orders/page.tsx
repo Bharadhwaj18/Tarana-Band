@@ -23,6 +23,9 @@ interface MerchOrder {
   payment_gateway?: string | null;
   gateway_payment_id?: string | null;
   paid_at?: string | null;
+  /** 'done' once Rigly has the order; 'pending' when it couldn't be sent yet (retried on the next checkout) */
+  rigly_sync?: string | null;
+  rigly_error?: string | null;
   refund_proof_url?: string | null;
   cancellation_reason?: string | null;
   status: string;
@@ -230,6 +233,14 @@ export default function AdminMerchOrdersPage() {
                       Paid via {order.gateway_payment_id ? 'PhonePe' : 'Razorpay'} ·{' '}
                       <span className="font-mono">{order.gateway_payment_id || order.razorpay_payment_id}</span>
                     </span>
+                  )}
+                  {order.rigly_sync === 'pending' && order.status !== 'cancelled' && (
+                    <span className="text-sm text-yellow-400" title={order.rigly_error || undefined}>
+                      Not in Rigly yet: it&apos;s sent again with the next checkout
+                    </span>
+                  )}
+                  {order.rigly_sync === 'done' && order.rigly_error && (
+                    <span className="text-sm text-yellow-400">{order.rigly_error}</span>
                   )}
                   {order.payment_proof_url && (
                     <a href={order.payment_proof_url} target="_blank" rel="noopener noreferrer"

@@ -201,13 +201,10 @@ export default function MerchStore() {
     }
 
     const fetchData = async () => {
-      const { data: productsData } = await supabase
-        .from('merchandise')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_position', { ascending: true });
-
-      setProducts(productsData || []);
+      // Sizes and stock come from Rigly through our server, so they match the band's inventory
+      const productsRes = await fetch('/api/merch-products', { cache: 'no-store' }).catch(() => null);
+      const productsData = productsRes?.ok ? await productsRes.json().catch(() => null) : null;
+      if (productsData?.products) setProducts(productsData.products);
 
       const { data: checkoutData } = await supabase
         .from('general_config')

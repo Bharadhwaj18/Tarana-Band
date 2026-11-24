@@ -1,6 +1,6 @@
 import { sendEmail } from '@/lib/email';
 import { newOrderBandEmail, orderConfirmedEmail } from '@/lib/emailTemplates';
-import { adjustStock } from '@/lib/merchStock';
+import { pushOrderToRigly } from '@/lib/rigly';
 import { getPhonePeOrderStatus, toPaise } from '@/lib/phonepe';
 
 type ConfirmResult =
@@ -66,7 +66,9 @@ export async function confirmPaidOrder(supabase: any, order: any): Promise<Confi
     return { ok: true, alreadyConfirmed: true, emailSent: false };
   }
 
-  await adjustStock(supabase, order.items, -1);
+  // Rigly takes the stock and records the money for approval. If Rigly can't be reached the order is still
+  // confirmed (it's paid); it's retried on the next checkout and from admin.
+  await syncOrderToRigly(supabase, { ...order, paid_at: now }, paymentId);
 
   const confirmation = orderConfirmedEmail(order, paymentId);
   const emailSent = await sendEmail({ to: order.email, ...confirmation });
@@ -77,6 +79,39 @@ export async function confirmPaidOrder(supabase: any, order: any): Promise<Confi
   }
 
   return { ok: true, alreadyConfirmed: false, emailSent };
+}
+
+/** Sends a paid order to Rigly and notes whether it got there. Never throws. */
+export async function syncOrderToRigly(supabase: any, order: any, paymentRef: string | null): Promise<boolean> {
+  try {
+    await pushOrderToRigly(order, paymentRef);
+    await supabase
+      .from('merch_orders')
+      .update({ rigly_sync: 'done', rigly_error: null })
+      .eq('id', order.id);
+    return true;
+  } catch (error: any) {
+    console.error('Could not send order to Rigly', order.id, error);
+    await supabase
+      .from('merch_orders')
+      .update({ rigly_sync: 'pending', rigly_error: String(error?.message || error).slice(0, 500) })
+      .eq('id', order.id);
+    return false;
+  }
+}
+
+/** Paid orders that haven't reached Rigly yet (Rigly was down when they were paid): try again. */
+export async function retryRiglySync(supabase: any, limit = 5) {
+  const { data: waiting } = await supabase
+    .from('merch_orders')
+    .select('*')
+    .eq('rigly_sync', 'pending')
+    .in('status', ['confirmed', 'shipped'])
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  for (const order of waiting || []) {
+    await syncOrderToRigly(supabase, order, order.gateway_payment_id || null);
+  }
 }
 
 /** Looks up an order by id and checks its payment with PhonePe */
@@ -109,4 +144,6 @@ export async function reconcileStaleOrders(supabase: any, limit = 5) {
       console.error('Could not reconcile stale order', order.id, error);
     }
   }
+
+  await retryRiglySync(supabase).catch((error) => console.error('Rigly retry failed:', error));
 }

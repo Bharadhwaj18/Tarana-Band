@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils';
+import { useRiglyItems } from '@/lib/useRiglyItems';
 
 interface SizeStock {
   [size: string]: number;
 }
-
-const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL'];
 
 interface Product {
   id: string;
@@ -26,6 +25,8 @@ interface Product {
   is_active: boolean;
   order_position: number;
   size_stock?: SizeStock | null;
+  /** The Rigly item this product sells: sizes and stock come from there */
+  rigly_item_id?: string | null;
 }
 
 export default function AdminMerchPage() {
@@ -47,7 +48,9 @@ export default function AdminMerchPage() {
     storage_path: '',
     storage_paths: [],
     size_stock: {},
+    rigly_item_id: null,
   });
+  const rigly = useRiglyItems();
   const [user, setUser] = useState<any>(null);
   const [checkoutQrUrl, setCheckoutQrUrl] = useState('');
   const [checkoutQrPath, setCheckoutQrPath] = useState('');
@@ -257,22 +260,15 @@ export default function AdminMerchPage() {
       // Prepare data - only use the new array columns, remove old singular columns
       const { image_url, storage_path, ...restFormData } = formData;
 
-      // Keep all sizes the admin explicitly set (including 0 = sold out).
-      // Only drop sizes that were never touched (undefined / NaN).
-      const cleanedStock = formData.size_stock
-        ? Object.fromEntries(
-            Object.entries(formData.size_stock).filter(
-              ([, v]) => typeof v === 'number' && !isNaN(v)
-            )
-          )
-        : {};
+      // Stock isn't edited here any more: it comes from Rigly (size_stock is only the shop's fallback copy)
+      const { size_stock: _stock, variant_ids: _variants, ...withoutStock } = restFormData as Partial<Product> & { variant_ids?: unknown };
 
       const dataToSave = {
-        ...restFormData,
+        ...withoutStock,
+        rigly_item_id: formData.rigly_item_id || null,
         image_urls: formData.image_urls?.filter(url => url) || null,
         image_positions: formData.image_positions?.length ? formData.image_positions : null,
         storage_paths: formData.storage_paths?.filter(path => path) || null,
-        size_stock: Object.keys(cleanedStock).length > 0 ? cleanedStock : null,
       };
 
       let result;
@@ -289,7 +285,7 @@ export default function AdminMerchPage() {
       }
 
       alert('Product saved successfully!');
-      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {} });
+      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {}, rigly_item_id: null });
       setEditingId(null);
       fetchProducts();
     } catch (error) {
@@ -461,37 +457,44 @@ export default function AdminMerchPage() {
               <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Stock per Size</label>
-              <p className="text-xs text-gray-400 mb-3">Enter stock count for sizes you sell. Leave empty for sizes not available. 0 = sold out (hidden on site).</p>
-              <div className="grid grid-cols-5 gap-3">
-                {SIZE_OPTIONS.map((size) => {
-                  const stockVal = formData.size_stock?.[size];
-                  return (
-                    <div key={size}>
-                      <label className="block text-xs text-gray-400 mb-1 text-center">{size}</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={stockVal !== undefined && stockVal !== null ? stockVal : ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData((prev) => {
-                            const updated = { ...prev.size_stock };
-                            if (val === '') {
-                              delete updated[size];
-                            } else {
-                              updated[size] = parseInt(val, 10);
-                            }
-                            return { ...prev, size_stock: updated };
-                          });
-                        }}
-                        placeholder="--"
-                        className="w-full px-2 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none text-center text-sm"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              <label htmlFor="rigly_item_id" className="block text-sm font-semibold text-gray-300 mb-2">Rigly item</label>
+              <p className="text-xs text-gray-400 mb-3">
+                Sizes and stock come from this item in Rigly. Change stock in Rigly; the shop only sells what isn&apos;t out in a show kit.
+                A product shows in the shop only when it&apos;s Active and linked.
+              </p>
+              {rigly.error ? (
+                <p className="text-sm text-red-400">{rigly.error}</p>
+              ) : (
+                <select
+                  id="rigly_item_id"
+                  value={formData.rigly_item_id || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, rigly_item_id: e.target.value || null }))}
+                  className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none"
+                >
+                  <option value="">{rigly.loading ? 'Loading Rigly items…' : 'Not linked (hidden from the shop)'}</option>
+                  {rigly.items.map((item) => {
+                    const usedBy = products.find((p) => p.rigly_item_id === item.id && p.id !== editingId);
+                    return (
+                      <option key={item.id} value={item.id} disabled={!!usedBy}>
+                        {item.name}{usedBy ? ` (already used by ${usedBy.name})` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+              {(() => {
+                const linked = rigly.items.find((i) => i.id === formData.rigly_item_id);
+                if (!linked) return null;
+                return (
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {linked.variants.map((v) => (
+                      <span key={v.id} className={`text-xs px-2 py-0.5 rounded ${stockTone(v.available)}`}>
+                        {v.label}: {v.available} to sell{v.inKits ? ` (${v.inKits} in kits)` : ''}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="is_active" checked={formData.is_active || false} onChange={handleInputChange} className="w-4 h-4" />
@@ -502,7 +505,7 @@ export default function AdminMerchPage() {
                 {editingId ? 'Update' : 'Add'} Product
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {} }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {}, rigly_item_id: null }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
               )}
@@ -570,6 +573,42 @@ export default function AdminMerchPage() {
           </button>
         </div>
 
+        {(() => {
+          const unlisted = rigly.items.filter((item) => !products.some((p) => p.rigly_item_id === item.id));
+          if (unlisted.length === 0) return null;
+          return (
+            <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 space-y-3">
+              <h2 className="text-xl font-semibold text-gold">In Rigly, not in the shop yet ({unlisted.length})</h2>
+              <p className="text-sm text-gray-400">
+                These items are in Rigly but have no shop listing. List one to add its photos, description and online price.
+              </p>
+              <ul className="divide-y divide-gray-700">
+                {unlisted.map((item) => (
+                  <li key={item.id} className="flex flex-wrap items-center gap-3 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-200">{item.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {item.variants.map((v) => `${v.label} ${v.available}`).join(' · ') || 'No sizes'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setFormData({ ...{ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {}, rigly_item_id: null }, name: item.name, rigly_item_id: item.id, is_active: false });
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="bg-gold hover:bg-gold-light text-black font-semibold px-4 py-1.5 rounded-lg text-sm"
+                    >
+                      List it
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
+
         <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
           <div className="p-6 border-b border-gray-700"><h2 className="text-xl font-semibold text-gold">Products ({products.length})</h2></div>
           {loading ? <div className="p-6 text-center text-gray-400">Loading...</div> : products.length === 0 ? <div className="p-6 text-center text-gray-400">No products yet</div> : (
@@ -578,28 +617,26 @@ export default function AdminMerchPage() {
                 <div key={product.id} className="border border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gray-700">
                   <h3 className="font-semibold text-gray-300">{product.name}</h3>
                   <p className="text-sm text-gray-400 mt-1">₹{product.price.toFixed(2)}</p>
-                  {product.size_stock && Object.keys(product.size_stock).length > 0 && (
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {SIZE_OPTIONS.map((size) => {
-                        const qty = (product.size_stock as SizeStock)[size];
-                        if (qty === undefined) return null;
-                        return (
-                          <span
-                            key={size}
-                            className={`text-xs px-2 py-0.5 rounded ${
-                              qty <= 0
-                                ? 'bg-red-900/50 text-red-400'
-                                : qty <= 5
-                                ? 'bg-yellow-900/50 text-yellow-400'
-                                : 'bg-green-900/50 text-green-400'
-                            }`}
-                          >
-                            {size}: {qty}
+                  {(() => {
+                    const linked = rigly.items.find((i) => i.id === product.rigly_item_id);
+                    if (!product.rigly_item_id) {
+                      return <p className="text-xs mt-2 text-yellow-400">Not linked to Rigly: hidden from the shop</p>;
+                    }
+                    if (!linked) {
+                      return rigly.loading || rigly.error ? null : (
+                        <p className="text-xs mt-2 text-red-400">Its Rigly item is archived or gone: hidden from the shop</p>
+                      );
+                    }
+                    return (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {linked.variants.map((v) => (
+                          <span key={v.id} className={`text-xs px-2 py-0.5 rounded ${stockTone(v.available)}`}>
+                            {v.label}: {v.available}
                           </span>
-                        );
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                   <p className="text-sm text-gray-400 mt-2">{product.description.slice(0, 100)}...</p>
                   <div className="flex gap-2 mt-4">
                     <button onClick={() => handleEdit(product)} className="text-gold hover:text-gold-light text-sm font-semibold">Edit</button>
@@ -613,4 +650,12 @@ export default function AdminMerchPage() {
       </div>
     </AdminLayout>
   );
+}
+
+function stockTone(qty: number) {
+  return qty <= 0
+    ? 'bg-red-900/50 text-red-400'
+    : qty <= 5
+    ? 'bg-yellow-900/50 text-yellow-400'
+    : 'bg-green-900/50 text-green-400';
 }

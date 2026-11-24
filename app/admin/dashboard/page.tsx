@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 import { getTourToday } from '@/lib/tours';
+import { useRiglyItems } from '@/lib/useRiglyItems';
 
 interface RecentOrder {
   id: string;
@@ -35,8 +36,6 @@ const STATUS_STYLE: Record<string, { label: string; className: string }> = {
   payment_failed: { label: 'Unpaid · expired', className: 'border border-muted text-muted' },
 };
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-
 function shortName(name?: string) {
   return (name || 'Item').replace(/\s*Oversized T[- ]?Shirt/i, '').trim();
 }
@@ -49,7 +48,8 @@ export default function AdminDashboard() {
   const [messages, setMessages] = useState<number | null>(null);
   const [nextShow, setNextShow] = useState<NextShow | null>(null);
   const [recent, setRecent] = useState<RecentOrder[]>([]);
-  const [alerts, setAlerts] = useState<StockAlert[]>([]);
+  const [listed, setListed] = useState<Array<{ name: string; rigly_item_id: string }>>([]);
+  const rigly = useRiglyItems();
 
   useEffect(() => {
     const load = async () => {
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
           .select('id, status, total_amount, created_at, items')
           .order('created_at', { ascending: false })
           .limit(6),
-        supabase.from('merchandise').select('name, size_stock').eq('is_active', true),
+        supabase.from('merchandise').select('name, rigly_item_id').eq('is_active', true).not('rigly_item_id', 'is', null),
       ]);
 
       setToShip(shipRes.count ?? 0);
@@ -90,19 +90,21 @@ export default function AdminDashboard() {
       setNextShow(showRes.data?.[0] || null);
       setRecent((recentRes.data as RecentOrder[]) || []);
 
-      const lowStock: StockAlert[] = [];
-      (merchRes.data || []).forEach((product: { name: string; size_stock: Record<string, number> | null }) => {
-        if (!product.size_stock || Object.keys(product.size_stock).length === 0) return;
-        SIZES.forEach((size) => {
-          const left = product.size_stock?.[size] ?? 0;
-          if (left <= 3) lowStock.push({ product: shortName(product.name), size, left });
-        });
-      });
-      setAlerts(lowStock.sort((a, b) => b.left - a.left));
+      setListed((merchRes.data as Array<{ name: string; rigly_item_id: string }>) || []);
     };
 
     load();
   }, [router]);
+
+  // Sizes running low online, for products on sale (stock comes from Rigly)
+  const alerts: StockAlert[] = listed
+    .flatMap((product) => {
+      const item = rigly.items.find((i) => i.id === product.rigly_item_id);
+      return (item?.variants || [])
+        .filter((v) => v.available <= 3)
+        .map((v) => ({ product: shortName(product.name), size: v.label, left: v.available }));
+    })
+    .sort((a, b) => b.left - a.left);
 
   if (!ready) {
     return (

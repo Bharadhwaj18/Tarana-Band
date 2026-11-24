@@ -284,21 +284,27 @@ export function orderShippedEmail(order: OrderLike, carrier?: string | null, tra
   };
 }
 
-export function orderCancelledEmail(order: OrderLike, reason: string | null, refundProofUrl: string) {
+export function orderCancelledEmail(order: OrderLike, reason: string | null, refundProofUrl: string | null) {
   const name = escapeHtml(order.customer_name || 'there');
   return {
     subject: `Your Tarana order ${orderNumber(order.id)} has been cancelled`,
     html: shell({
-      preheader: 'Your order was cancelled and your refund has been processed.',
+      preheader: refundProofUrl
+        ? 'Your order was cancelled and your refund has been processed.'
+        : 'Your order was cancelled and your money is being refunded.',
       eyebrow: 'Order cancelled',
       title: 'Order',
       accent: 'cancelled.',
       body: [
-        paragraph(`Hi ${name}, your merch order has been cancelled and we've processed your refund.`),
+        paragraph(
+          refundProofUrl
+            ? `Hi ${name}, your merch order has been cancelled and we've processed your refund.`
+            : `Hi ${name}, your merch order has been cancelled. We're refunding the full amount to the way you paid; it usually shows up within 5 to 7 working days.`
+        ),
         reason ? details([['Reason', escapeHtml(reason)]]) : '',
         receipt(order, ['REFUNDED']),
-        paragraph('You can see the refund confirmation here:'),
-        button('View refund proof', refundProofUrl),
+        refundProofUrl ? paragraph('You can see the refund confirmation here:') : '',
+        refundProofUrl ? button('View refund proof', refundProofUrl) : '',
         paragraph("Sorry it didn't work out this time. If anything looks wrong, just reply to this email."),
       ].join(''),
     }),
