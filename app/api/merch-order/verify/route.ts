@@ -37,7 +37,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ state: 'FAILED', error: 'This order was cancelled.' }, { status: 400 });
     }
 
-    const result = await confirmPaidOrder(supabase, order);
+    let result;
+    try {
+      result = await confirmPaidOrder(supabase, order);
+    } catch (error) {
+      // PhonePe couldn't be reached just now. Report it as still pending so the browser keeps checking on its
+      // schedule instead of telling a customer who may have paid that something broke.
+      console.error('Verify merch payment: PhonePe check failed, will retry:', error);
+      return NextResponse.json({ state: 'PENDING', error: 'Still checking your payment with PhonePe.' }, { status: 202 });
+    }
     if (!result.ok) {
       const status = result.state === 'PENDING' ? 202 : 400;
       return NextResponse.json({ state: result.state, error: result.error }, { status });

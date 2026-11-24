@@ -32,20 +32,33 @@ async function getAccessToken(): Promise<string> {
   const nowSeconds = Math.floor(Date.now() / 1000);
   if (cachedToken && cachedToken.expiresAt - 60 > nowSeconds) return cachedToken.value;
 
-  const res = await fetch(AUTH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.PHONEPE_CLIENT_ID || '',
-      client_secret: process.env.PHONEPE_CLIENT_SECRET || '',
-      client_version: process.env.PHONEPE_CLIENT_VERSION || '',
-      grant_type: 'client_credentials',
-    }),
-    cache: 'no-store',
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data?.access_token) {
-    throw new Error(data?.message || `PhonePe login failed (${res.status})`);
+  const body = new URLSearchParams({
+    client_id: process.env.PHONEPE_CLIENT_ID || '',
+    client_secret: process.env.PHONEPE_CLIENT_SECRET || '',
+    client_version: process.env.PHONEPE_CLIENT_VERSION || '',
+    grant_type: 'client_credentials',
+  }).toString();
+
+  // PhonePe's login answers with a 5xx now and then (in the sandbox about half the time), so try a few times
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+    try {
+      res = await fetch(AUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+        cache: 'no-store',
+      });
+    } catch (error) {
+      if (attempt === 3) throw error;
+      continue;
+    }
+    if (res.status < 500) break;
+  }
+  const data = await res!.json().catch(() => ({}));
+  if (!res!.ok || !data?.access_token) {
+    throw new Error(data?.message || `PhonePe login failed (${res!.status})`);
   }
   // PhonePe's docs don't say whether expires_at is in seconds or milliseconds, so accept both
   const rawExpiry = Number(data.expires_at);
@@ -54,7 +67,13 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.value;
 }
 
-async function phonePeRequest(path: string, method: 'GET' | 'POST', body?: unknown, retried = false): Promise<any> {
+async function phonePeRequest(
+  path: string,
+  method: 'GET' | 'POST',
+  body?: unknown,
+  retried = false,
+  attempt = 0
+): Promise<any> {
   const token = await getAccessToken();
   const res = await fetch(`${PG_BASE}${path}`, {
     method,
@@ -65,7 +84,13 @@ async function phonePeRequest(path: string, method: 'GET' | 'POST', body?: unkno
   // A rejected token (expired early, or rotated) is refreshed once and the request repeated
   if (res.status === 401 && !retried) {
     cachedToken = null;
-    return phonePeRequest(path, method, body, true);
+    return phonePeRequest(path, method, body, true, attempt);
+  }
+  // PhonePe answers with a 5xx now and then. Status checks are safe to repeat, and so is starting a payment:
+  // it carries our order id, so PhonePe won't create a second payment for the same order.
+  if (res.status >= 500 && attempt < 3) {
+    await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    return phonePeRequest(path, method, body, retried, attempt + 1);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
