@@ -6,6 +6,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useAppConfig } from '@/components/AppConfigProvider';
 import { createClient } from '@supabase/supabase-js';
+import { DEFAULT_HEADLINE_STAGES, DEFAULT_MORE_STAGES } from '@/lib/aboutStages';
 
 interface BandMember {
   id: string;
@@ -21,13 +22,11 @@ interface AboutConfig {
   hero_description?: string;
   story_title?: string;
   story_paragraphs?: string[];
+  stages_headline?: string[];
+  stages_more?: string[];
 }
 
 const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
-
-// Big festivals first, then colleges and venues, as on a gig poster lineup
-const HEADLINE_STAGES = ['Bengaluru Ganesh Utsava', 'Udupi Paryaya', 'Under 25 Summit', 'Slaughterfest', 'Bangalore Habba'];
-const MORE_STAGES = ['MAHE Bengaluru', 'DSCE', 'RNSIT', 'SMVITM', 'NITTE', 'Orion Mall', 'Phoenix Marketcity', 'Forum South Mall'];
 
 // Short label shown on each member's photo
 function instrumentTag(role: string) {
@@ -95,6 +94,9 @@ export default function AboutPage() {
   const countWord = memberCount > 0 && memberCount < NUMBER_WORDS.length ? NUMBER_WORDS[memberCount] : 'All';
   const { lead, rest } = splitLead(aboutConfig.hero_description || '');
   const storyParagraphs = aboutConfig.story_paragraphs || [];
+  // Edited in admin -> About page; the built-in lists are used until a list has been saved
+  const headlineStages = Array.isArray(aboutConfig.stages_headline) ? aboutConfig.stages_headline : DEFAULT_HEADLINE_STAGES;
+  const moreStages = Array.isArray(aboutConfig.stages_more) ? aboutConfig.stages_more : DEFAULT_MORE_STAGES;
 
   return (
     <main className="gp min-h-screen">
@@ -113,20 +115,26 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section aria-label="Where we have played" className="bg-ink text-paper">
-        <div className="gp-container py-16 sm:py-20 text-center">
-          <p className="gp-mono text-sm uppercase text-poster-light mb-6">As seen on stage at</p>
-          <p className="font-poster uppercase text-[clamp(28px,4vw,56px)] leading-[1.1]">
-            {HEADLINE_STAGES.map((stage, index) => (
-              <span key={stage}>
-                {stage}
-                {index < HEADLINE_STAGES.length - 1 && <span className="text-poster-light"> ✶ </span>}
-              </span>
-            ))}
-          </p>
-          <p className="gp-mono text-base leading-loose text-[#D6D0C4] mt-7">{MORE_STAGES.join(' · ')}</p>
-        </div>
-      </section>
+      {(headlineStages.length > 0 || moreStages.length > 0) && (
+        <section aria-label="Where we have played" className="bg-ink text-paper">
+          <div className="gp-container py-16 sm:py-20 text-center">
+            <p className="gp-mono text-sm uppercase text-poster-light mb-6">As seen on stage at</p>
+            {headlineStages.length > 0 && (
+              <p className="font-poster uppercase text-[clamp(28px,4vw,56px)] leading-[1.1]">
+                {headlineStages.map((stage, index) => (
+                  <span key={`${stage}-${index}`}>
+                    {stage}
+                    {index < headlineStages.length - 1 && <span className="text-poster-light"> ✶ </span>}
+                  </span>
+                ))}
+              </p>
+            )}
+            {moreStages.length > 0 && (
+              <p className="gp-mono text-base leading-loose text-[#D6D0C4] mt-7">{moreStages.join(' · ')}</p>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="gp-container py-20 sm:py-24">
         <div className="flex flex-wrap justify-between items-end gap-4 mb-10">

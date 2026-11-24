@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { createClient } from '@supabase/supabase-js';
+import { DEFAULT_HEADLINE_STAGES, DEFAULT_MORE_STAGES, cleanStageList } from '@/lib/aboutStages';
 
 interface AboutConfig {
   hero_title: string;
   hero_description: string;
   story_title: string;
   story_paragraphs: string[];
+  stages_headline: string[];
+  stages_more: string[];
 }
 
 export default function AdminAboutPage() {
@@ -16,7 +19,9 @@ export default function AdminAboutPage() {
     hero_title: '',
     hero_description: '',
     story_title: '',
-    story_paragraphs: ['', '', '']
+    story_paragraphs: ['', '', ''],
+    stages_headline: DEFAULT_HEADLINE_STAGES,
+    stages_more: DEFAULT_MORE_STAGES,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,7 +51,14 @@ export default function AdminAboutPage() {
     if (error) {
       console.error('Error fetching config:', error);
     } else if (data?.content) {
-      setConfig(data.content as AboutConfig);
+      // Stage lists saved before this existed fall back to the defaults
+      const saved = data.content as Partial<AboutConfig>;
+      setConfig((prev) => ({
+        ...prev,
+        ...saved,
+        stages_headline: Array.isArray(saved.stages_headline) ? saved.stages_headline : DEFAULT_HEADLINE_STAGES,
+        stages_more: Array.isArray(saved.stages_more) ? saved.stages_more : DEFAULT_MORE_STAGES,
+      }));
     }
 
     setLoading(false);
@@ -71,7 +83,11 @@ export default function AdminAboutPage() {
       .from('general_config')
       .upsert({
         section_name: 'about_page',
-        content: config,
+        content: {
+          ...config,
+          stages_headline: cleanStageList(config.stages_headline),
+          stages_more: cleanStageList(config.stages_more),
+        },
         is_active: true,
         updated_at: new Date().toISOString()
       }, {
@@ -148,6 +164,39 @@ export default function AdminAboutPage() {
               rows={3}
               placeholder="Brief description of the band..."
             />
+          </div>
+        </div>
+
+        {/* Stages Section */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-2xl font-bold text-gold mb-1">Stages We&apos;ve Played</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            The &quot;As seen on stage at&quot; strip on the About page. Type one name per line. Leave both boxes empty to
+            hide the strip.
+          </p>
+
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2">Big names (shown in large letters)</label>
+            <textarea
+              value={config.stages_headline.join('\n')}
+              onChange={(e) => setConfig({ ...config, stages_headline: e.target.value.split('\n') })}
+              className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none"
+              rows={6}
+              placeholder={'Bengaluru Ganesh Utsava\nUdupi Paryaya'}
+            />
+            <p className="text-gray-500 text-xs mt-1">Festivals and big events. Order here is the order on the page.</p>
+          </div>
+
+          <div className="mb-2">
+            <label className="block text-gray-300 mb-2">More stages (shown smaller underneath)</label>
+            <textarea
+              value={config.stages_more.join('\n')}
+              onChange={(e) => setConfig({ ...config, stages_more: e.target.value.split('\n') })}
+              className="w-full p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-gold focus:outline-none"
+              rows={8}
+              placeholder={'DSCE\nOrion Mall'}
+            />
+            <p className="text-gray-500 text-xs mt-1">Colleges, malls and other venues.</p>
           </div>
         </div>
 
