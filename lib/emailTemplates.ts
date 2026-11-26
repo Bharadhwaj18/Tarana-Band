@@ -3,6 +3,7 @@
 // and every font has a web-safe fallback (Gmail and Outlook don't load web fonts).
 
 import { SITE_URL } from './seo';
+import { HISTORY_LINK_VALID_FOR, orderViewUrl } from './orderAccess';
 
 const INK = '#141414';
 const PAPER = '#F1ECE2';
@@ -142,6 +143,12 @@ function button(label: string, url: string) {
     </table>`;
 }
 
+/** "View your order" button with the private link for this order; nothing if links aren't set up */
+function viewOrderButton(order: OrderLike) {
+  const url = orderViewUrl(order.id);
+  return url ? button('View your order', url) : '';
+}
+
 function addressHtml(order: OrderLike) {
   return [
     order.address_line1,
@@ -228,7 +235,8 @@ export function orderConfirmedEmail(order: OrderLike, paymentId: string) {
         receipt(order, [`PAID VIA PHONEPE · ${escapeHtml(paymentId)}`]),
         details([['Shipping to', addressHtml(order)]]),
         paragraph(`We ship via India Post. You'll get another email with the tracking number as soon as it's on its way.`),
-        button('Visit taranaband.in', SITE_URL),
+        viewOrderButton(order),
+        paragraph(`Keep this email: the button above opens your order any time to see where it is.`),
       ].join(''),
     }),
   };
@@ -278,6 +286,7 @@ export function orderShippedEmail(order: OrderLike, carrier?: string | null, tra
         tracking,
         receipt(order),
         details([['Shipping to', addressHtml(order)]]),
+        viewOrderButton(order),
         paragraph('Wear it loud, and tag us on Instagram when it arrives. We love seeing it out in the wild.'),
       ].join(''),
     }),
@@ -305,6 +314,7 @@ export function orderCancelledEmail(order: OrderLike, reason: string | null, ref
         receipt(order, ['REFUNDED']),
         refundProofUrl ? paragraph('You can see the refund confirmation here:') : '',
         refundProofUrl ? button('View refund proof', refundProofUrl) : '',
+        viewOrderButton(order),
         paragraph("Sorry it didn't work out this time. If anything looks wrong, just reply to this email."),
       ].join(''),
     }),
@@ -333,6 +343,24 @@ export function contactBandEmail(form: { name: string; email: string; phone?: st
           <tr><td style="padding:16px 18px;font-family:${BODY};font-size:16px;line-height:1.6;color:${INK};">${escapeHtml(form.message).replace(/\n/g, '<br>')}</td></tr>
         </table>`,
         paragraph('Hit reply to answer them directly.'),
+      ].join(''),
+    }),
+  };
+}
+
+/** Sent when someone asks for a link to all their orders */
+export function orderHistoryEmail(name: string | null, url: string) {
+  return {
+    subject: 'Your Tarana orders',
+    html: shell({
+      preheader: 'Open this link to see your Tarana merch orders.',
+      eyebrow: 'Your orders',
+      title: 'Your',
+      accent: 'orders.',
+      body: [
+        paragraph(`Hi ${escapeHtml(name || 'there')}, here's your link to see your Tarana merch orders, with their status and tracking.`),
+        button('See my orders', url),
+        paragraph(`The link works for ${HISTORY_LINK_VALID_FOR}. If it has expired, just ask for a new one on the merch page. If you didn't ask for this, you can ignore this email.`),
       ].join(''),
     }),
   };

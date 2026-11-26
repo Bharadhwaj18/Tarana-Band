@@ -18,9 +18,14 @@ export default function MerchPage() {
             Merch<span className="text-poster">.</span>
           </h1>
         </div>
-        <p className="max-w-[36ch] text-[17px] leading-relaxed">
-          Limited runs. Every rupee goes into touring and recording. Pay by UPI, card, netbanking or wallet.
-        </p>
+        <div className="max-w-[36ch]">
+          <p className="text-[17px] leading-relaxed">
+            Limited runs. Every rupee goes into touring and recording. Pay by UPI, card, netbanking or wallet.
+          </p>
+          <Link href="/merch/orders" className="gp-mono text-sm uppercase font-bold underline decoration-poster underline-offset-4 mt-4 inline-block">
+            Already ordered? Track your order →
+          </Link>
+        </div>
       </section>
 
       <MerchStore />
