@@ -6,27 +6,37 @@ import ProductCard, { ONE_SIZE, stockFor, type Product } from './ProductCard';
 import { supabase } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
 
+interface RazorpayOptions {
+  key: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description?: string;
+  prefill?: { name?: string; email?: string; contact?: string };
+  notes?: Record<string, string>;
+  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+  modal?: { ondismiss?: () => void; confirm_close?: boolean };
+}
+
 declare global {
   interface Window {
-    PhonePeCheckout?: {
-      transact: (options: { tokenUrl: string; type?: 'IFRAME'; callback?: (response: string) => void }) => void;
-      closePage?: () => void;
-    };
+    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
   }
 }
 
-const PHONEPE_SCRIPT_URL = 'https://mercury.phonepe.com/web/bundle/checkout.js';
+const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
-// Loads PhonePe's checkout script once, on first checkout
-function loadPhonePeScript(): Promise<boolean> {
+// Loads Razorpay's checkout script once, on first checkout
+function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (window.PhonePeCheckout) return resolve(true);
-    const existing = document.querySelector(`script[src="${PHONEPE_SCRIPT_URL}"]`);
+    if (window.Razorpay) return resolve(true);
+    const existing = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
     const script = (existing as HTMLScriptElement) || document.createElement('script');
     script.addEventListener('load', () => resolve(true));
     script.addEventListener('error', () => resolve(false));
     if (!existing) {
-      script.src = PHONEPE_SCRIPT_URL;
+      script.src = RAZORPAY_SCRIPT_URL;
       document.body.appendChild(script);
     }
   });
@@ -36,7 +46,7 @@ type VerifyResult =
   | { state: 'COMPLETED'; orderId: string; items: CartItem[]; total: number; email: string; emailSent: boolean }
   | { state: 'PENDING' | 'FAILED' | 'ERROR'; error: string };
 
-// Asks our server to check the payment with PhonePe
+// Asks our server to check the payment with Razorpay
 async function verifyPayment(orderId: string): Promise<VerifyResult> {
   try {
     const response = await fetch('/api/merch-order/verify', {
@@ -52,8 +62,8 @@ async function verifyPayment(orderId: string): Promise<VerifyResult> {
   }
 }
 
-// PhonePe requires a payment that is still pending to be re-checked on a fixed schedule until it finishes or
-// the order expires (20 min): first check ~22s after starting, then every 3s for 30s, every 6s for 60s,
+// A payment that is still pending (a UPI approval that hasn't gone through yet) is re-checked on a schedule
+// until it finishes: first check ~22s after starting, then every 3s for 30s, every 6s for 60s,
 // every 10s for 60s, every 30s for 60s, then every minute. Offsets are ms after the payment was started.
 const ORDER_EXPIRY_MS = 20 * 60 * 1000;
 const RECHECK_OFFSETS: number[] = (() => {
@@ -74,7 +84,7 @@ const RECHECK_OFFSETS: number[] = (() => {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Checks now, and while PhonePe still says pending keeps checking on the schedule above */
+/** Checks now, and while Razorpay still says pending keeps checking on the schedule above */
 async function pollPayment(
   orderId: string,
   startedAt: number,
@@ -236,8 +246,8 @@ export default function MerchStore() {
     };
   }, []);
 
-  // Checks a started payment with PhonePe (re-checking while it is pending) and shows the receipt or what went wrong.
-  // `local` is the cart as the customer saw it; after a redirect from PhonePe the server supplies it instead.
+  // Checks a started payment with Razorpay (re-checking while it is pending) and shows the receipt or what went wrong.
+  // `local` is the cart as the customer saw it; after a redirect back to the site the server supplies it instead.
   const settlePayment = async (
     orderId: string,
     startedAt: number,
@@ -288,7 +298,7 @@ export default function MerchStore() {
     }
   };
 
-  // Back from PhonePe's own page (/merch?order=<id>)
+  // Back on the site with an order id in the address (/merch?order=<id>)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const returnedOrder = params.get('order');
@@ -415,12 +425,12 @@ export default function MerchStore() {
 
     setSubmitting(true);
     try {
-      const scriptLoaded = await loadPhonePeScript();
-      if (!scriptLoaded || !window.PhonePeCheckout) {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
         throw new Error('Could not load the payment window. Please check your connection and try again.');
       }
 
-      // Server checks prices and stock, saves the order and starts the PhonePe payment
+      // Server checks prices and stock, saves the order and creates the Razorpay order
       const response = await fetch('/api/merch-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -433,25 +443,38 @@ export default function MerchStore() {
       }
 
       const startedAt = Date.now();
-      window.PhonePeCheckout.transact({
-        tokenUrl: data.payUrl,
-        type: 'IFRAME',
-        callback: async (result: string) => {
-          if (result === 'USER_CANCEL') {
+      const local = { items: orderItems, total: orderValue, email: customerEmail, analyticsItems };
+      let finished = false;
+      const razorpay = new window.Razorpay({
+        key: data.keyId,
+        order_id: data.razorpayOrderId,
+        amount: data.amountPaise,
+        currency: 'INR',
+        name: 'Tarana',
+        description: 'Tarana merch order',
+        prefill: { name: formData.fullName.trim(), email: customerEmail, contact: formData.phone.trim() },
+        notes: { order_id: data.orderId },
+        // The customer paid: the server checks the outcome with Razorpay before anything is confirmed
+        handler: async () => {
+          finished = true;
+          await settlePayment(data.orderId, startedAt, local);
+        },
+        // The customer closed the window. They may have approved a UPI payment just before, so check once.
+        modal: {
+          ondismiss: async () => {
+            if (finished) return;
+            finished = true;
+            const result = await verifyPayment(data.orderId);
+            if (result.state === 'COMPLETED' || result.state === 'PENDING') {
+              await settlePayment(data.orderId, startedAt, local);
+              return;
+            }
             setSubmitting(false);
             setCheckoutError('Payment was not completed, so no money was taken and your order has not been placed. Your bag and details are saved.');
-            return;
-          }
-
-          // CONCLUDED: the pay page finished; the server checks the outcome with PhonePe
-          await settlePayment(data.orderId, startedAt, {
-            items: orderItems,
-            total: orderValue,
-            email: customerEmail,
-            analyticsItems,
-          });
+          },
         },
       });
+      razorpay.open();
     } catch (error: any) {
       setCheckoutError(error?.message || 'Failed to start checkout.');
       setSubmitting(false);
@@ -646,7 +669,7 @@ export default function MerchStore() {
                       {item.size !== ONE_SIZE ? ` / ${item.size}` : ''} — ₹{(item.product.price * item.quantity).toFixed(0)}
                     </p>
                   ))}
-                  <p className="font-bold mt-1">TOTAL ₹{confirmed.total.toFixed(0)} · PAID VIA PHONEPE</p>
+                  <p className="font-bold mt-1">TOTAL ₹{confirmed.total.toFixed(0)} · PAID VIA RAZORPAY</p>
                 </div>
                 <p className="text-sm leading-relaxed">
                   {confirmed.emailSent
@@ -817,7 +840,7 @@ export default function MerchStore() {
                       submitting || payDisabledReason ? 'bg-[#8F8A80] text-white' : 'gp-btn-red'
                     }`}
                   >
-                    {submitting ? 'Opening PhonePe…' : checkoutError && cart.length > 0 ? `Try again · ₹${totalAmount.toFixed(0)}` : `Pay ₹${totalAmount.toFixed(0)}`}
+                    {submitting ? 'Opening payment…' : checkoutError && cart.length > 0 ? `Try again · ₹${totalAmount.toFixed(0)}` : `Pay ₹${totalAmount.toFixed(0)}`}
                   </button>
                   {payDisabledReason && !submitting && (
                     <p id="pay-reason" className="mt-2.5 text-[13px] text-center text-poster-dark">
@@ -825,7 +848,7 @@ export default function MerchStore() {
                     </p>
                   )}
                   <p className="mt-4 text-xs leading-relaxed text-center">
-                    Opens PhonePe securely
+                    Opens Razorpay securely
                     <br />
                     UPI · Cards · Netbanking · Wallets
                   </p>

@@ -119,7 +119,7 @@ export default function OrderCard({ order }: { order: CustomerOrder }) {
         {order.gateway_payment_id && (
           <div>
             <p className="gp-mono text-xs uppercase font-bold mb-1.5">Payment</p>
-            <p className="gp-mono text-xs break-all text-muted">PhonePe · {order.gateway_payment_id}</p>
+            <p className="gp-mono text-xs break-all text-muted">{order.payment_gateway === 'phonepe' ? 'PhonePe' : 'Razorpay'} · {order.gateway_payment_id}</p>
           </div>
         )}
       </div>

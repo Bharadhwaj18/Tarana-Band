@@ -37,7 +37,7 @@ interface MerchOrder {
 
 type Tab = 'confirmed' | 'shipped' | 'cancelled' | 'pending_payment' | 'all';
 
-// Unpaid = checkouts that were never paid: still in progress, or failed/expired at PhonePe
+// Unpaid = checkouts that were never paid: still in progress, or failed/expired at the payment gateway
 const isUnpaid = (status: string) => status === 'pending_payment' || status === 'payment_failed';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -230,7 +230,7 @@ export default function AdminMerchOrdersPage() {
                   </span>
                   {(order.gateway_payment_id || order.razorpay_payment_id) && (
                     <span className="text-sm text-green-400">
-                      Paid via {order.gateway_payment_id ? 'PhonePe' : 'Razorpay'} ·{' '}
+                      Paid via {order.payment_gateway === 'phonepe' ? 'PhonePe' : 'Razorpay'} ·{' '}
                       <span className="font-mono">{order.gateway_payment_id || order.razorpay_payment_id}</span>
                     </span>
                   )}

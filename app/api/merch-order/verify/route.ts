@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { confirmPaidOrder } from '@/lib/merchOrders';
 
-// Called by the browser when the PhonePe pay page closes, or when PhonePe sends the customer
-// back to /merch?order=<id>. The server checks with PhonePe directly; the browser only says which order.
+// Called by the browser when the Razorpay pay window reports a result or is closed.
+// The server checks with Razorpay directly; the browser only says which order.
 // Responds with the order summary so the receipt can be shown even after a full page redirect.
 export async function POST(request: NextRequest) {
   try {
@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
     try {
       result = await confirmPaidOrder(supabase, order);
     } catch (error) {
-      // PhonePe couldn't be reached just now. Report it as still pending so the browser keeps checking on its
+      // Razorpay couldn't be reached just now. Report it as still pending so the browser keeps checking on its
       // schedule instead of telling a customer who may have paid that something broke.
-      console.error('Verify merch payment: PhonePe check failed, will retry:', error);
-      return NextResponse.json({ state: 'PENDING', error: 'Still checking your payment with PhonePe.' }, { status: 202 });
+      console.error('Verify merch payment: Razorpay check failed, will retry:', error);
+      return NextResponse.json({ state: 'PENDING', error: 'Still checking your payment with Razorpay.' }, { status: 202 });
     }
     if (!result.ok) {
       const status = result.state === 'PENDING' ? 202 : 400;

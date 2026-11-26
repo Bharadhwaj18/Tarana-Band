@@ -45,7 +45,7 @@ export default function MerchPage() {
         </div>
       </section>
 
-      <Ticker words={['Secure checkout via PhonePe', 'UPI', 'Cards', 'Netbanking', 'Wallets', 'Email updates on every order']} />
+      <Ticker words={['Secure checkout via Razorpay', 'UPI', 'Cards', 'Netbanking', 'Wallets', 'Email updates on every order']} />
 
       <Footer />
     </main>

@@ -24,10 +24,11 @@ export interface CustomerOrder {
   cancellation_reason: string | null;
   refund_proof_url: string | null;
   gateway_payment_id: string | null;
+  payment_gateway: string | null;
 }
 
 const COLUMNS =
-  'id,status,items,total_amount,customer_name,email,address_line1,address_line2,city,state,pincode,paid_at,created_at,shipped_at,tracking_number,carrier,cancelled_at,cancellation_reason,refund_proof_url,gateway_payment_id';
+  'id,status,items,total_amount,customer_name,email,address_line1,address_line2,city,state,pincode,paid_at,created_at,shipped_at,tracking_number,carrier,cancelled_at,cancellation_reason,refund_proof_url,gateway_payment_id,payment_gateway';
 
 // Orders that were never paid (abandoned or failed checkouts) are not "orders" to a customer
 const VISIBLE_STATUSES = ['confirmed', 'shipped', 'cancelled'];

@@ -55,7 +55,7 @@ interface OrderLine {
 }
 
 /**
- * Saves a paid order in Rigly: the order, a pending online sale (money held by the PhonePe payee) and the stock moves.
+ * Saves a paid order in Rigly: the order, a pending online sale (money held by whoever receives the online payments) and the stock moves.
  * Safe to call more than once for the same order.
  */
 export async function pushOrderToRigly(order: any, paymentRef: string | null) {

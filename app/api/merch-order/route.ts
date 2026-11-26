@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createPhonePePayment, isPhonePeConfigured, toPaise } from '@/lib/phonepe';
+import { createRazorpayOrder, isRazorpayConfigured, razorpayKeyId, toPaise } from '@/lib/razorpay';
 import { isPageEnabled } from '@/lib/pageVisibility';
 import { reconcileStaleOrders } from '@/lib/merchOrders';
 import { getCatalog, type CatalogProduct } from '@/lib/merchCatalog';
 
 // Starts checkout: checks the cart against the database, saves the order as pending_payment
-// and starts a PhonePe payment for it. The order is only confirmed after payment
-// (see /api/merch-order/verify and /api/phonepe/webhook).
+// and creates a Razorpay order for it. The order is only confirmed after payment
+// (see /api/merch-order/verify and /api/razorpay/webhook).
 export async function POST(request: NextRequest) {
   try {
     // No new orders while the merch page is switched off in admin
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
     }
-    if (!isPhonePeConfigured()) {
+    if (!isRazorpayConfigured()) {
       return NextResponse.json({ error: 'Online payments are not set up yet.' }, { status: 500 });
     }
 
@@ -151,33 +151,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Failed to save order: ${insertError?.message || 'unknown error'}` }, { status: 500 });
     }
 
-    // Our order id doubles as PhonePe's merchantOrderId, so the webhook and status checks find it directly
+    // Our order id is stored on the Razorpay order (receipt and notes), and Razorpay's order id on ours
     const amountPaise = toPaise(calculatedTotal);
-    let payment: { orderId: string; redirectUrl: string };
+    let payment: { id: string };
     try {
-      payment = await createPhonePePayment({
-        merchantOrderId: order.id,
-        amountPaise,
-        // Where PhonePe sends the customer if the pay page leaves our site (e.g. after a UPI app)
-        redirectUrl: `${request.nextUrl.origin}/merch?order=${order.id}`,
-      });
+      payment = await createRazorpayOrder({ orderId: order.id, amountPaise });
     } catch (error: any) {
       // Remove the pending order so it doesn't linger without a payment attached
       await supabase.from('merch_orders').delete().eq('id', order.id).eq('status', 'pending_payment');
-      console.error('PhonePe payment creation failed:', error);
+      console.error('Razorpay order creation failed:', error);
       return NextResponse.json({ error: 'Could not start the payment. Please try again.' }, { status: 502 });
     }
 
     const { error: linkError } = await supabase
       .from('merch_orders')
-      .update({ payment_gateway: 'phonepe', gateway_order_id: payment.orderId, updated_at: new Date().toISOString() })
+      .update({ payment_gateway: 'razorpay', gateway_order_id: payment.id, updated_at: new Date().toISOString() })
       .eq('id', order.id);
 
     if (linkError) {
       return NextResponse.json({ error: `Failed to save order: ${linkError.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ orderId: order.id, payUrl: payment.redirectUrl });
+    return NextResponse.json({
+      orderId: order.id,
+      razorpayOrderId: payment.id,
+      keyId: razorpayKeyId(),
+      amountPaise,
+    });
   } catch (error) {
     console.error('Merch order error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
