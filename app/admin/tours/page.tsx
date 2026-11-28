@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
+import AdminDrawer, { DrawerFooter } from '@/components/AdminDrawer';
+import { useFormDrawer } from '@/lib/useFormDrawer';
 import { getTourStatus, isTourDatePast } from '@/lib/tours';
 
 interface Tour {
@@ -16,18 +18,19 @@ interface Tour {
   description: string | null;
 }
 
+const EMPTY_TOUR: Partial<Tour> = {
+  date: '',
+  venue_name: '',
+  city: '',
+  ticket_link: '',
+  status: 'upcoming',
+  description: '',
+};
+
 export default function AdminToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Tour>>({
-    date: '',
-    venue_name: '',
-    city: '',
-    ticket_link: '',
-    status: 'upcoming',
-    description: '',
-  });
+  const { open, editingId, formData, setFormData, openNew, openEdit, close, requestClose } = useFormDrawer<Partial<Tour>>(EMPTY_TOUR);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
@@ -93,30 +96,23 @@ export default function AdminToursPage() {
     };
 
     try {
-      if (editingId) {
-        await supabase.from('tours').update(tourData).eq('id', editingId);
-      } else {
-        await supabase.from('tours').insert([tourData]);
+      const { error } = editingId
+        ? await supabase.from('tours').update(tourData).eq('id', editingId)
+        : await supabase.from('tours').insert([tourData]);
+      if (error) {
+        // The panel stays open so nothing typed is lost
+        alert(`Error saving tour: ${error.message}`);
+        return;
       }
-      setFormData({
-        date: '',
-        venue_name: '',
-        city: '',
-        ticket_link: '',
-        status: 'upcoming',
-        description: '',
-      });
-      setEditingId(null);
+      close();
       fetchTours();
     } catch (error) {
       console.error('Error:', error);
+      alert('Error saving tour');
     }
   };
 
-  const handleEdit = (tour: Tour) => {
-    setEditingId(tour.id);
-    setFormData(tour);
-  };
+  const handleEdit = (tour: Tour) => openEdit(tour.id, tour);
 
   const handleDelete = async (id: string) => {
     if (!supabase) return;
@@ -134,63 +130,11 @@ export default function AdminToursPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gold">Tours & Events</h1>
-
-        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-          <h2 className="text-xl font-semibold text-gold mb-4">
-            {editingId ? 'Edit Tour' : 'Add New Tour'}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Tour Date</label>
-                <input type="date" name="date" value={formData.date || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-                {formData.date && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    {isTourDatePast(formData.date)
-                      ? 'Past date - this show will be listed under Past Shows'
-                      : '✓ Upcoming date - this show will be listed under Upcoming Shows'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Venue Name</label>
-                <input type="text" name="venue_name" value={formData.venue_name || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">City</label>
-                <input type="text" name="city" value={formData.city || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Ticket Link</label>
-                <input type="url" name="ticket_link" value={formData.ticket_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Status</label>
-                <select name="status" value={formData.status || 'upcoming'} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none">
-                  {getValidStatusOptions().includes('upcoming') && <option value="upcoming">Upcoming</option>}
-                  {getValidStatusOptions().includes('past') && <option value="past">Past</option>}
-                  {getValidStatusOptions().includes('cancelled') && <option value="cancelled">Cancelled</option>}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Description (optional)</label>
-                <textarea name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
-                {editingId ? 'Update' : 'Add'} Tour
-              </button>
-              {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ date: '', venue_name: '', city: '', ticket_link: '', status: 'upcoming', description: '' }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold text-gold">Tours & Events</h1>
+          <button type="button" onClick={() => openNew()} className="bg-gold hover:bg-gold-light text-black font-semibold px-5 py-2 rounded-lg whitespace-nowrap">
+            + Add tour
+          </button>
         </div>
 
         <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
@@ -231,6 +175,58 @@ export default function AdminToursPage() {
           )}
         </div>
       </div>
+
+      <AdminDrawer open={open} title={editingId ? 'Edit Tour' : 'Add New Tour'} onClose={requestClose}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Tour Date</label>
+                <input type="date" name="date" value={formData.date || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+                {formData.date && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {isTourDatePast(formData.date)
+                      ? 'Past date - this show will be listed under Past Shows'
+                      : '✓ Upcoming date - this show will be listed under Upcoming Shows'}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Venue Name</label>
+                <input type="text" name="venue_name" value={formData.venue_name || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">City</label>
+                <input type="text" name="city" value={formData.city || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Ticket Link</label>
+                <input type="url" name="ticket_link" value={formData.ticket_link || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Status</label>
+                <select name="status" value={formData.status || 'upcoming'} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none">
+                  {getValidStatusOptions().includes('upcoming') && <option value="upcoming">Upcoming</option>}
+                  {getValidStatusOptions().includes('past') && <option value="past">Past</option>}
+                  {getValidStatusOptions().includes('cancelled') && <option value="cancelled">Cancelled</option>}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Description (optional)</label>
+                <textarea name="description" value={formData.description || ''} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
+              </div>
+            </div>
+            <DrawerFooter>
+                <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
+                  {editingId ? 'Update' : 'Add'} Tour
+                </button>
+                <button type="button" onClick={requestClose} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+                  Cancel
+                </button>
+              </DrawerFooter>
+            </form>
+      </AdminDrawer>
     </AdminLayout>
   );
 }

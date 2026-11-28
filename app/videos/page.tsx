@@ -127,7 +127,7 @@ export default function VideosPage() {
       try {
         const [{ data: categoriesData }, { data: videosData }] = await Promise.all([
           supabase.from('video_categories').select('*').order('order_position', { ascending: true }),
-          supabase.from('videos').select('*').order('order_position', { ascending: true }),
+          supabase.from('videos').select('*').order('order_position', { ascending: true }).order('created_at', { ascending: true }),
         ]);
         setCategories(categoriesData || []);
         setVideos(videosData || []);

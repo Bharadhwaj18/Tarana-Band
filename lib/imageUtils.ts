@@ -1,3 +1,19 @@
+// iPhone photos are often HEIC, which most desktop browsers can't open. Turn them into a JPEG first.
+const HEIC_PATTERN = /\.(heic|heif)$/i;
+
+export async function convertHeicToJpeg(file: File): Promise<File> {
+  const looksHeic = HEIC_PATTERN.test(file.name) || /image\/hei[cf]/i.test(file.type);
+  if (!looksHeic) return file;
+
+  // Loaded only when a HEIC file is picked, so it doesn't weigh down every admin page
+  const { heicTo } = await import('heic-to');
+  const jpeg = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
+  return new File([jpeg], file.name.replace(HEIC_PATTERN, '.jpg'), {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+}
+
 // Image compression utility
 export async function compressImage(file: File, maxSizeMB: number = 1): Promise<File> {
   return new Promise((resolve, reject) => {
@@ -64,12 +80,12 @@ export async function uploadImageToSupabase(
   folder: string = 'gallery'
 ): Promise<{ url: string; path: string } | null> {
   try {
-    // Compress the image first
-    const compressedFile = await compressImage(file);
+    // HEIC (iPhone) photos are converted first, then every image is resized and saved as a JPEG
+    const readable = await convertHeicToJpeg(file);
+    const compressedFile = await compressImage(readable);
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    // Generate unique filename. The saved file is always a JPEG, so the name says so.
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
     const filePath = `${folder}/${fileName}`;
 
     // Upload to Supabase Storage

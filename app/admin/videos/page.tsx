@@ -4,6 +4,21 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
+import AdminDrawer, { DrawerFooter } from '@/components/AdminDrawer';
+import { useFormDrawer } from '@/lib/useFormDrawer';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import SortableRow from '@/components/SortableRow';
+import OrderSaveStatus, { type OrderStatus } from '@/components/OrderSaveStatus';
+import { saveOrder } from '@/lib/saveOrder';
 import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils';
 
 interface VideoCategory {
@@ -25,28 +40,37 @@ interface Video {
   category_id: string | null;
 }
 
+type VideoForm = Partial<Video & { thumbnail_storage_path: string }>;
+
+const EMPTY_VIDEO: VideoForm = {
+  title: '',
+  description: '',
+  video_file_url: '',
+  video_type: 'youtube',
+  is_featured: false,
+  order_position: 0,
+  category_id: null,
+  thumbnail_url: null,
+  thumbnail_storage_path: '',
+};
+
 export default function AdminVideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [categories, setCategories] = useState<VideoCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryLink, setEditingCategoryLink] = useState('');
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailStoragePath, setThumbnailStoragePath] = useState('');
   const [draggedCategory, setDraggedCategory] = useState<VideoCategory | null>(null);
-  const [formData, setFormData] = useState<Partial<Video & { thumbnail_storage_path: string }>>({
-    title: '',
-    description: '',
-    video_file_url: '',
-    video_type: 'youtube',
-    is_featured: false,
-    order_position: 0,
-    category_id: null,
-    thumbnail_url: null,
-    thumbnail_storage_path: '',
-  });
+  const { open, editingId, formData, setFormData, openNew, openEdit, close, requestClose } = useFormDrawer<VideoForm>(EMPTY_VIDEO);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>('');
+  const sensors = useSensors(
+    // A small movement first, so a plain click on a row still works
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
@@ -224,7 +248,7 @@ export default function AdminVideosPage() {
     if (!supabase) return;
 
     try {
-      const { data } = await supabase.from('videos').select('*').order('order_position');
+      const { data } = await supabase.from('videos').select('*').order('order_position').order('created_at');
       setVideos(data || []);
     } catch (error) {
       console.error('Error:', error);
@@ -256,29 +280,78 @@ export default function AdminVideosPage() {
         video_file_url: formData.video_file_url,
         video_type: formData.video_type,
         is_featured: formData.is_featured,
-        order_position: formData.order_position,
+        // New videos go to the end; the order is changed by dragging in the list
+        order_position: editingId ? formData.order_position ?? 0 : videos.reduce((max, v) => Math.max(max, v.order_position || 0), -1) + 1,
         category_id: formData.category_id,
         thumbnail_url: formData.thumbnail_url,
         thumbnail_storage_path: thumbnailStoragePath,
       };
 
-      if (editingId) {
-        await supabase.from('videos').update(submitData).eq('id', editingId);
-      } else {
-        await supabase.from('videos').insert([submitData]);
+      const { error } = editingId
+        ? await supabase.from('videos').update(submitData).eq('id', editingId)
+        : await supabase.from('videos').insert([submitData]);
+      if (error) {
+        // The panel stays open so nothing typed is lost
+        alert(`Error saving video: ${error.message}`);
+        return;
       }
-      setFormData({ title: '', description: '', video_file_url: '', video_type: 'youtube', is_featured: false, order_position: 0, category_id: null, thumbnail_url: null, thumbnail_storage_path: '' });
-      setEditingId(null);
+      close();
       setThumbnailStoragePath('');
       fetchVideos();
     } catch (error) {
       console.error('Error:', error);
+      alert('Error saving video');
     }
   };
 
+  // Videos are shown by category (in the category order), so each category is its own list to drag within
+  const videoGroups = (() => {
+    const groups = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      videos: videos.filter((v) => v.category_id === category.id),
+    }));
+    const known = new Set(categories.map((c) => c.id));
+    const loose = videos.filter((v) => !v.category_id || !known.has(v.category_id));
+    if (loose.length > 0) groups.push({ id: 'uncategorized', name: 'Uncategorized', videos: loose });
+    return groups.filter((group) => group.videos.length > 0);
+  })();
+
+  // Dropping a row in a new spot saves the new order straight away (it's the order on the Videos page)
+  const handleVideoDragEnd = async (event: DragEndEvent) => {
+    if (!supabase) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const group = videoGroups.find((g) => g.videos.some((v) => v.id === active.id));
+    // Videos only move within their own category
+    if (!group || !group.videos.some((v) => v.id === over.id)) return;
+
+    const from = group.videos.findIndex((v) => v.id === active.id);
+    const to = group.videos.findIndex((v) => v.id === over.id);
+    const previous = videos;
+    // Number everything in the order the groups are listed, so each category keeps its own sequence
+    const everything = videoGroups.flatMap((g) => (g === group ? arrayMove(g.videos, from, to) : g.videos));
+    const reordered = everything.map((v, index) => ({ ...v, order_position: index }));
+    setVideos(reordered);
+    setOrderStatus('saving');
+    try {
+      await saveOrder(supabase, 'videos', reordered, previous);
+      setOrderStatus('saved');
+      setTimeout(() => setOrderStatus(''), 2500);
+    } catch (error) {
+      console.error('Error saving order:', error);
+      setVideos(previous);
+      setOrderStatus('error');
+    }
+  };
+
+  const startNew = () => {
+    setThumbnailStoragePath('');
+    openNew();
+  };
+
   const handleEdit = (video: Video) => {
-    setEditingId(video.id);
-    setFormData(video);
+    openEdit(video.id, video);
     setThumbnailStoragePath((video as any).thumbnail_storage_path || '');
   };
 
@@ -297,7 +370,12 @@ export default function AdminVideosPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gold">Videos</h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold text-gold">Videos</h1>
+          <button type="button" onClick={() => startNew()} className="bg-gold hover:bg-gold-light text-black font-semibold px-5 py-2 rounded-lg whitespace-nowrap">
+            + Add video
+          </button>
+        </div>
 
         {/* Category Management Section */}
         <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
@@ -399,9 +477,60 @@ export default function AdminVideosPage() {
           )}
         </div>
 
-        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-          <h2 className="text-xl font-semibold text-gold mb-4">{editingId ? 'Edit Video' : 'Add New Video'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
+          <div className="p-6 border-b border-gray-700">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold text-gold">Videos ({videos.length})</h2>
+              <OrderSaveStatus status={orderStatus} />
+            </div>
+            {videos.length > 1 && (
+              <p className="text-sm text-gray-400 mt-1">Drag a video by the handle to change the order within its category. This is the order on the Videos page.</p>
+            )}
+          </div>
+          {loading ? <div className="p-6 text-center text-gray-400">Loading...</div> : videos.length === 0 ? <div className="p-6 text-center text-gray-400">No videos yet</div> : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleVideoDragEnd}>
+              {videoGroups.map((group) => (
+                <div key={group.id} className="border-t border-gray-700 first:border-t-0">
+                  <h3 className="px-6 py-3 bg-gray-900/40 text-sm font-semibold uppercase tracking-wide text-gray-300">
+                    {group.name} ({group.videos.length})
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-700 border-b border-gray-600">
+                        <tr>
+                          <th className="w-24 px-3 py-3 text-left font-semibold text-gray-300">Order</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-300">Title</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-300">Type</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-300">Featured</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-300">Actions</th>
+                        </tr>
+                      </thead>
+                      <SortableContext items={group.videos.map((v) => v.id)} strategy={verticalListSortingStrategy}>
+                        <tbody className="divide-y divide-gray-700">
+                          {group.videos.map((video, index) => (
+                            <SortableRow key={video.id} id={video.id} position={index + 1} sortable={group.videos.length > 1}>
+                              <td className="px-4 py-3 text-gray-300">{video.title}</td>
+                              <td className="px-4 py-3 text-gray-400">{video.video_type}</td>
+                              <td className="px-4 py-3 text-gray-400">{video.is_featured ? '✓' : '-'}</td>
+                              <td className="px-4 py-3 space-x-2">
+                                <button onClick={() => handleEdit(video)} className="text-gold hover:text-gold-light font-semibold">Edit</button>
+                                <button onClick={() => handleDelete(video.id)} className="text-red-400 hover:text-red-300 font-semibold">Delete</button>
+                              </td>
+                            </SortableRow>
+                          ))}
+                        </tbody>
+                      </SortableContext>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </DndContext>
+          )}
+        </div>
+      </div>
+
+      <AdminDrawer open={open} title={editingId ? 'Edit Video' : 'Add New Video'} onClose={requestClose}>
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Video Title</label>
               <input type="text" name="title" value={formData.title || ''} onChange={handleInputChange} required className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
@@ -453,7 +582,7 @@ export default function AdminVideosPage() {
                 <label className="block">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.heif"
                     onChange={handleThumbnailUpload}
                     disabled={thumbnailUploading}
                     className="block w-full text-sm text-gray-500
@@ -476,60 +605,17 @@ export default function AdminVideosPage() {
                 <input type="checkbox" name="is_featured" checked={formData.is_featured || false} onChange={handleInputChange} className="w-4 h-4" />
                 <span className="text-sm text-gray-300">Featured</span>
               </label>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
-                <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
-              </div>
             </div>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
-                {editingId ? 'Update' : 'Add'} Video
-              </button>
-              {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ title: '', description: '', video_file_url: '', video_type: 'youtube', is_featured: false, order_position: 0, category_id: null, thumbnail_url: null, thumbnail_storage_path: '' }); setThumbnailStoragePath(''); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+            <DrawerFooter>
+                <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
+                  {editingId ? 'Update' : 'Add'} Video
+                </button>
+                <button type="button" onClick={requestClose} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
-              )}
-            </div>
-          </form>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
-          <div className="p-6 border-b border-gray-700"><h2 className="text-xl font-semibold text-gold">Videos ({videos.length})</h2></div>
-          {loading ? <div className="p-6 text-center text-gray-400">Loading...</div> : videos.length === 0 ? <div className="p-6 text-center text-gray-400">No videos yet</div> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-700 border-b border-gray-600">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Title</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Category</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Type</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Featured</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-300">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {videos.map((video) => {
-                    const category = categories.find(c => c.id === video.category_id);
-                    return (
-                      <tr key={video.id} className="hover:bg-gray-750">
-                        <td className="px-4 py-3 text-gray-300">{video.title}</td>
-                        <td className="px-4 py-3 text-gray-400">{category?.name || 'Uncategorized'}</td>
-                        <td className="px-4 py-3 text-gray-400">{video.video_type}</td>
-                        <td className="px-4 py-3 text-gray-400">{video.is_featured ? '✓' : '-'}</td>
-                        <td className="px-4 py-3 space-x-2">
-                          <button onClick={() => handleEdit(video)} className="text-gold hover:text-gold-light font-semibold">Edit</button>
-                          <button onClick={() => handleDelete(video.id)} className="text-red-400 hover:text-red-300 font-semibold">Delete</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+              </DrawerFooter>
+            </form>
+      </AdminDrawer>
     </AdminLayout>
   );
 }

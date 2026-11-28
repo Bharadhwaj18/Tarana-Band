@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import FramedImage from './FramedImage';
 
 interface Product {
   id: string;
@@ -70,11 +71,11 @@ export default function ProductCarousel({ product }: { product: Product }) {
           aria-label={`Zoom photo ${index + 1} of ${product.name}`}
           className="block w-full p-0 cursor-zoom-in"
         >
-          <img
+          <FramedImage
             src={images[index]}
             alt={`${product.name}, photo ${index + 1} of ${count}`}
-            className="w-full aspect-square object-cover block"
-            style={{ objectPosition: product.image_positions?.[index] || 'center' }}
+            position={product.image_positions?.[index]}
+            className="w-full aspect-square"
           />
         </button>
 

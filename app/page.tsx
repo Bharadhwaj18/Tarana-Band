@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import Ticker from '@/components/Ticker';
+import FramedImage from '@/components/FramedImage';
 import { useAppConfig } from '@/components/AppConfigProvider';
 import { createClient } from '@supabase/supabase-js';
 import { getTourStatus } from '@/lib/tours';
@@ -168,6 +169,7 @@ export default function Home() {
         .eq('is_active', true)
         .not('rigly_item_id', 'is', null)
         .order('order_position', { ascending: true })
+        .order('created_at', { ascending: true })
         .limit(2);
       setMerch(merchData || []);
     };
@@ -524,12 +526,13 @@ export default function Home() {
                   {merch.map((item) => {
                     const image = item.image_urls?.[0] || item.image_url;
                     return image ? (
-                      <img
+                      <FramedImage
                         key={item.id}
                         src={getOptimizedSupabaseImageUrl(image, 500)}
                         alt={item.name}
-                        className="w-full aspect-[3/4] object-cover border-[3px] border-paper"
-                        style={{ objectPosition: item.image_positions?.[0] || 'center' }}
+                        position={item.image_positions?.[0]}
+                        aspect={3 / 4}
+                        className="w-full aspect-[3/4] border-[3px] border-paper"
                       />
                     ) : null;
                   })}

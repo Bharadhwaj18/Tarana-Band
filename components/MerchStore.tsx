@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import ProductCard, { ONE_SIZE, stockFor, type Product } from './ProductCard';
+import FramedImage from './FramedImage';
 import { supabase } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
 
@@ -709,11 +710,12 @@ export default function MerchStore() {
                               className={`flex flex-wrap gap-4 sm:gap-5 items-center p-5 ${index > 0 ? 'border-t-2 border-ink' : ''}`}
                             >
                               {image && (
-                                <img
+                                <FramedImage
                                   src={image}
                                   alt=""
-                                  className="w-20 h-24 object-cover border-2 border-ink"
-                                  style={{ objectPosition: item.product.image_positions?.[0] || 'center' }}
+                                  position={item.product.image_positions?.[0]}
+                                  aspect={20 / 24}
+                                  className="w-20 h-24 border-2 border-ink"
                                 />
                               )}
                               <div className="flex-[1_1_160px] min-w-0">

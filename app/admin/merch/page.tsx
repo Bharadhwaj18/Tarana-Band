@@ -1,11 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import SortableCard from '@/components/SortableCard';
+import OrderSaveStatus, { type OrderStatus } from '@/components/OrderSaveStatus';
+import { saveOrder } from '@/lib/saveOrder';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
+import AdminDrawer, { DrawerFooter } from '@/components/AdminDrawer';
+import { useFormDrawer } from '@/lib/useFormDrawer';
 import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/imageUtils';
 import { useRiglyItems } from '@/lib/useRiglyItems';
+import ImageCropper from '@/components/ImageCropper';
 
 interface SizeStock {
   [size: string]: number;
@@ -29,28 +50,34 @@ interface Product {
   rigly_item_id?: string | null;
 }
 
+const EMPTY_PRODUCT: Partial<Product> = {
+  name: '',
+  description: '',
+  price: 0,
+  external_link: '',
+  is_active: true,
+  order_position: 0,
+  image_url: '',
+  image_urls: [],
+  image_positions: [],
+  storage_path: '',
+  storage_paths: [],
+  size_stock: {},
+  rigly_item_id: null,
+};
+
 export default function AdminMerchPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Product>>({
-    name: '',
-    description: '',
-    price: 0,
-    external_link: '',
-    is_active: true,
-    order_position: 0,
-    image_url: '',
-    image_urls: [],
-    image_positions: [],
-    storage_path: '',
-    storage_paths: [],
-    size_stock: {},
-    rigly_item_id: null,
-  });
+  const { open, editingId, formData, setFormData, openNew, openEdit, close, requestClose } = useFormDrawer<Partial<Product>>(EMPTY_PRODUCT);
   const rigly = useRiglyItems();
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>('');
+  const sensors = useSensors(
+    // A small movement first, so a plain click on the card still works
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   const [user, setUser] = useState<any>(null);
   const [checkoutQrUrl, setCheckoutQrUrl] = useState('');
   const [checkoutQrPath, setCheckoutQrPath] = useState('');
@@ -76,7 +103,7 @@ export default function AdminMerchPage() {
   const fetchProducts = async () => {
     if (!supabase) return;
     try {
-      const { data } = await supabase.from('merchandise').select('*').order('order_position');
+      const { data } = await supabase.from('merchandise').select('*').order('order_position').order('created_at');
       setProducts(data || []);
     } catch (error) {
       console.error('Error:', error);
@@ -263,8 +290,12 @@ export default function AdminMerchPage() {
       // Stock isn't edited here any more: it comes from Rigly (size_stock is only the shop's fallback copy)
       const { size_stock: _stock, variant_ids: _variants, ...withoutStock } = restFormData as Partial<Product> & { variant_ids?: unknown };
 
+      // New products go to the end; the order is changed by dragging in the list
+      const lastPosition = products.reduce((max, p) => Math.max(max, p.order_position || 0), -1);
+
       const dataToSave = {
         ...withoutStock,
+        order_position: editingId ? formData.order_position ?? 0 : lastPosition + 1,
         rigly_item_id: formData.rigly_item_id || null,
         image_urls: formData.image_urls?.filter(url => url) || null,
         image_positions: formData.image_positions?.length ? formData.image_positions : null,
@@ -284,9 +315,7 @@ export default function AdminMerchPage() {
         return;
       }
 
-      alert('Product saved successfully!');
-      setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {}, rigly_item_id: null });
-      setEditingId(null);
+      close();
       fetchProducts();
     } catch (error) {
       console.error('Error:', error);
@@ -294,9 +323,32 @@ export default function AdminMerchPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingId(product.id);
-    setFormData(product);
+  const handleEdit = (product: Product) => openEdit(product.id, product);
+
+  // Dropping a card in a new spot saves the new order straight away (it's what the shop and homepage use)
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!supabase) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const from = products.findIndex((p) => p.id === active.id);
+    const to = products.findIndex((p) => p.id === over.id);
+    if (from === -1 || to === -1) return;
+
+    const previous = products;
+    const reordered = arrayMove(products, from, to).map((p, index) => ({ ...p, order_position: index }));
+    setProducts(reordered);
+    setOrderStatus('saving');
+
+    try {
+      await saveOrder(supabase, 'merchandise', reordered, previous);
+      setOrderStatus('saved');
+      setTimeout(() => setOrderStatus(''), 2500);
+    } catch (error) {
+      console.error('Error saving order:', error);
+      setProducts(previous);
+      setOrderStatus('error');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -332,11 +384,171 @@ export default function AdminMerchPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gold">Merchandise</h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold text-gold">Merchandise</h1>
+          <button type="button" onClick={() => openNew()} className="bg-gold hover:bg-gold-light text-black font-semibold px-5 py-2 rounded-lg whitespace-nowrap">
+            + Add product
+          </button>
+        </div>
 
-        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-          <h2 className="text-xl font-semibold text-gold mb-4">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
+          <div className="p-6 border-b border-gray-700">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold text-gold">Products ({products.length})</h2>
+              <OrderSaveStatus status={orderStatus} />
+            </div>
+            {products.length > 1 && (
+              <p className="text-sm text-gray-400 mt-1">
+                Drag a card by its handle to change the order. This is the order customers see in the shop and on the homepage.
+              </p>
+            )}
+          </div>
+          {loading ? <div className="p-6 text-center text-gray-400">Loading...</div> : products.length === 0 ? <div className="p-6 text-center text-gray-400">No products yet</div> : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={products.map((p) => p.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
+              {products.map((product, index) => (
+                <SortableCard key={product.id} id={product.id} position={index + 1} sortable={products.length > 1}>
+                  <div className="flex items-start gap-3">
+                    {product.image_urls?.[0] && (
+                      <img src={product.image_urls[0]} alt="" className="w-14 h-14 rounded object-cover shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-gray-300">{product.name}</h3>
+                      {!product.is_active && (
+                        <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-gray-600 text-gray-300">Inactive: hidden from the shop</span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">₹{product.price.toFixed(2)}</p>
+                  {(() => {
+                    const linked = rigly.items.find((i) => i.id === product.rigly_item_id);
+                    if (!product.rigly_item_id) {
+                      return <p className="text-xs mt-2 text-yellow-400">Not linked to Rigly: hidden from the shop</p>;
+                    }
+                    if (!linked) {
+                      return rigly.loading || rigly.error ? null : (
+                        <p className="text-xs mt-2 text-red-400">Its Rigly item is archived or gone: hidden from the shop</p>
+                      );
+                    }
+                    return (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {linked.variants.map((v) => (
+                          <span key={v.id} className={`text-xs px-2 py-0.5 rounded ${stockTone(v.available)}`}>
+                            {v.label}: {v.available}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                  <p className="text-sm text-gray-400 mt-2">{product.description.slice(0, 100)}...</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => handleEdit(product)} className="text-gold hover:text-gold-light text-sm font-semibold">Edit</button>
+                    <button onClick={() => handleDelete(product.id)} className="text-red-400 hover:text-red-300 text-sm font-semibold">Delete</button>
+                  </div>
+                </SortableCard>
+              ))}
+            </div>
+            </SortableContext>
+            </DndContext>
+          )}
+        </div>
+        {(() => {
+          const unlisted = rigly.items.filter((item) => !products.some((p) => p.rigly_item_id === item.id));
+          if (unlisted.length === 0) return null;
+          return (
+            <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 space-y-3">
+              <h2 className="text-xl font-semibold text-gold">In Rigly, not in the shop yet ({unlisted.length})</h2>
+              <p className="text-sm text-gray-400">
+                These items are in Rigly but have no shop listing. List one to add its photos, description and online price.
+              </p>
+              <ul className="divide-y divide-gray-700">
+                {unlisted.map((item) => (
+                  <li key={item.id} className="flex flex-wrap items-center gap-3 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-200">{item.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {item.variants.map((v) => `${v.label} ${v.available}`).join(' · ') || 'No sizes'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openNew({ name: item.name, rigly_item_id: item.id, is_active: false })}
+                      className="bg-gold hover:bg-gold-light text-black font-semibold px-4 py-1.5 rounded-lg text-sm"
+                    >
+                      List it
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
+
+        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 space-y-4">
+          <h2 className="text-xl font-semibold text-gold">Checkout Configuration</h2>
+          <p className="text-sm text-gray-400">
+            Configure the QR code and shipping disclaimer shown on the merch checkout page.
+          </p>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Shipping Disclaimer</label>
+            <textarea
+              value={checkoutDisclaimer}
+              onChange={(e) => setCheckoutDisclaimer(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">Payment QR Code</label>
+            {checkoutQrUrl ? (
+              <div className="space-y-2">
+                <img
+                  src={checkoutQrUrl}
+                  alt="Checkout QR preview"
+                  className="w-40 h-40 object-contain bg-white rounded-lg p-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckoutQrUrl('');
+                    setCheckoutQrPath('');
+                  }}
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+                >
+                  Remove QR
+                </button>
+              </div>
+            ) : (
+              <label className="block border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gold transition">
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  onChange={handleCheckoutQrUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+                <span className="text-sm text-gray-400">Upload QR code image</span>
+                {uploading && <p className="text-xs text-gold mt-1">Uploading...</p>}
+              </label>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={saveCheckoutSettings}
+            className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg"
+          >
+            Save Checkout Settings
+          </button>
+        </div>
+
+      </div>
+
+      <AdminDrawer wide open={open} title={editingId ? 'Edit Product' : 'Add New Product'} onClose={requestClose}>
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-300 mb-2">Product Name</label>
@@ -354,25 +566,17 @@ export default function AdminMerchPage() {
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-1">Product Images (up to 3)</label>
               <p className="text-xs text-gray-400 mb-3">
-                Upload up to 3 photos. Once uploaded, <span className="text-gold font-medium">click or drag anywhere on the image</span> to set the focal point — that part of the photo will stay visible when the site crops it for the card.
+                Upload up to 3 photos. The shop shows each one as a square: <span className="text-gold font-medium">drag the bright box</span> over the part you want customers to see. The dark part gets cropped out.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[0, 1, 2].map((index) => {
                   const imgUrl = formData.image_urls?.[index];
-                  const rawPos = formData.image_positions?.[index] || '50% 50%';
-                  const parts = rawPos.split(' ');
-                  const dotX = parseFloat(parts[0]);
-                  const dotY = parseFloat(parts[1]);
-                  const validDot = !isNaN(dotX) && !isNaN(dotY);
 
-                  const applyPosition = (clientX: number, clientY: number, el: HTMLElement) => {
-                    const rect = el.getBoundingClientRect();
-                    const x = Math.min(100, Math.max(0, Math.round(((clientX - rect.left) / rect.width) * 100)));
-                    const y = Math.min(100, Math.max(0, Math.round(((clientY - rect.top) / rect.height) * 100)));
+                  const setPosition = (position: string) => {
                     setFormData((prev) => {
                       const positions = prev.image_positions ? [...prev.image_positions] : ['50% 50%', '50% 50%', '50% 50%'];
                       while (positions.length < 3) positions.push('50% 50%');
-                      positions[index] = `${x}% ${y}%`;
+                      positions[index] = position;
                       return { ...prev, image_positions: positions };
                     });
                   };
@@ -382,50 +586,12 @@ export default function AdminMerchPage() {
                       <p className="text-xs text-gray-400">Image {index + 1}</p>
                       {imgUrl ? (
                         <div className="space-y-2">
-                          <div
-                            className="relative w-full h-64 bg-gray-900 rounded-lg overflow-hidden cursor-crosshair select-none"
-                            onMouseDown={(e) => {
-                              setDraggingIndex(index);
-                              applyPosition(e.clientX, e.clientY, e.currentTarget);
-                            }}
-                            onMouseMove={(e) => {
-                              if (draggingIndex === index) applyPosition(e.clientX, e.clientY, e.currentTarget);
-                            }}
-                            onMouseUp={() => setDraggingIndex(null)}
-                            onMouseLeave={() => setDraggingIndex(null)}
-                            onTouchStart={(e) => {
-                              setDraggingIndex(index);
-                              applyPosition(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget);
-                            }}
-                            onTouchMove={(e) => {
-                              if (draggingIndex === index) applyPosition(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget);
-                            }}
-                            onTouchEnd={() => setDraggingIndex(null)}
-                          >
-                            <img
-                              src={imgUrl}
-                              alt={`Product preview ${index + 1}`}
-                              className="w-full h-full object-cover pointer-events-none"
-                              style={{ objectPosition: rawPos }}
-                            />
-                            {/* Focal point crosshair */}
-                            {validDot && (
-                              <>
-                                <div
-                                  className="absolute top-0 bottom-0 w-px bg-white/40 pointer-events-none"
-                                  style={{ left: `${dotX}%` }}
-                                />
-                                <div
-                                  className="absolute left-0 right-0 h-px bg-white/40 pointer-events-none"
-                                  style={{ top: `${dotY}%` }}
-                                />
-                                <div
-                                  className="absolute w-4 h-4 rounded-full border-2 border-white bg-gold/70 -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow"
-                                  style={{ left: `${dotX}%`, top: `${dotY}%` }}
-                                />
-                              </>
-                            )}
-                          </div>
+                          <ImageCropper
+                            src={imgUrl}
+                            alt={`Product preview ${index + 1}`}
+                            position={formData.image_positions?.[index] || '50% 50%'}
+                            onChange={setPosition}
+                          />
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
@@ -438,7 +604,7 @@ export default function AdminMerchPage() {
                         <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-gold transition">
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.heic,.heif"
                             onChange={(e) => handleMultiplePhotoUpload(e, index)}
                             disabled={uploading}
                             className="hidden"
@@ -451,10 +617,6 @@ export default function AdminMerchPage() {
                   );
                 })}
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">Display Order</label>
-              <input type="number" name="order_position" value={formData.order_position || 0} onChange={handleInputChange} className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none" />
             </div>
             <div>
               <label htmlFor="rigly_item_id" className="block text-sm font-semibold text-gray-300 mb-2">Rigly item</label>
@@ -500,154 +662,16 @@ export default function AdminMerchPage() {
               <input type="checkbox" name="is_active" checked={formData.is_active || false} onChange={handleInputChange} className="w-4 h-4" />
               <span className="text-sm text-gray-300">Active</span>
             </label>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
-                {editingId ? 'Update' : 'Add'} Product
-              </button>
-              {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setFormData({ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {}, rigly_item_id: null }); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
+            <DrawerFooter>
+                <button type="submit" className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg">
+                  {editingId ? 'Update' : 'Add'} Product
+                </button>
+                <button type="button" onClick={requestClose} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-6 py-2 rounded-lg">
                   Cancel
                 </button>
-              )}
-            </div>
-          </form>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 space-y-4">
-          <h2 className="text-xl font-semibold text-gold">Checkout Configuration</h2>
-          <p className="text-sm text-gray-400">
-            Configure the QR code and shipping disclaimer shown on the merch checkout page.
-          </p>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Shipping Disclaimer</label>
-            <textarea
-              value={checkoutDisclaimer}
-              onChange={(e) => setCheckoutDisclaimer(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 text-white rounded-lg focus:border-gold focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-300 mb-2">Payment QR Code</label>
-            {checkoutQrUrl ? (
-              <div className="space-y-2">
-                <img
-                  src={checkoutQrUrl}
-                  alt="Checkout QR preview"
-                  className="w-40 h-40 object-contain bg-white rounded-lg p-2"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCheckoutQrUrl('');
-                    setCheckoutQrPath('');
-                  }}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
-                >
-                  Remove QR
-                </button>
-              </div>
-            ) : (
-              <label className="block border-2 border-dashed border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-gold transition">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCheckoutQrUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-                <span className="text-sm text-gray-400">Upload QR code image</span>
-                {uploading && <p className="text-xs text-gold mt-1">Uploading...</p>}
-              </label>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={saveCheckoutSettings}
-            className="bg-gold hover:bg-gold-light text-black font-semibold px-6 py-2 rounded-lg"
-          >
-            Save Checkout Settings
-          </button>
-        </div>
-
-        {(() => {
-          const unlisted = rigly.items.filter((item) => !products.some((p) => p.rigly_item_id === item.id));
-          if (unlisted.length === 0) return null;
-          return (
-            <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 space-y-3">
-              <h2 className="text-xl font-semibold text-gold">In Rigly, not in the shop yet ({unlisted.length})</h2>
-              <p className="text-sm text-gray-400">
-                These items are in Rigly but have no shop listing. List one to add its photos, description and online price.
-              </p>
-              <ul className="divide-y divide-gray-700">
-                {unlisted.map((item) => (
-                  <li key={item.id} className="flex flex-wrap items-center gap-3 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-gray-200">{item.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {item.variants.map((v) => `${v.label} ${v.available}`).join(' · ') || 'No sizes'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingId(null);
-                        setFormData({ ...{ name: '', description: '', price: 0, external_link: '', is_active: true, order_position: 0, image_url: '', image_urls: [], image_positions: [], storage_path: '', storage_paths: [], size_stock: {}, rigly_item_id: null }, name: item.name, rigly_item_id: item.id, is_active: false });
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="bg-gold hover:bg-gold-light text-black font-semibold px-4 py-1.5 rounded-lg text-sm"
-                    >
-                      List it
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })()}
-
-        <div className="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
-          <div className="p-6 border-b border-gray-700"><h2 className="text-xl font-semibold text-gold">Products ({products.length})</h2></div>
-          {loading ? <div className="p-6 text-center text-gray-400">Loading...</div> : products.length === 0 ? <div className="p-6 text-center text-gray-400">No products yet</div> : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
-              {products.map((product) => (
-                <div key={product.id} className="border border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow bg-gray-700">
-                  <h3 className="font-semibold text-gray-300">{product.name}</h3>
-                  <p className="text-sm text-gray-400 mt-1">₹{product.price.toFixed(2)}</p>
-                  {(() => {
-                    const linked = rigly.items.find((i) => i.id === product.rigly_item_id);
-                    if (!product.rigly_item_id) {
-                      return <p className="text-xs mt-2 text-yellow-400">Not linked to Rigly: hidden from the shop</p>;
-                    }
-                    if (!linked) {
-                      return rigly.loading || rigly.error ? null : (
-                        <p className="text-xs mt-2 text-red-400">Its Rigly item is archived or gone: hidden from the shop</p>
-                      );
-                    }
-                    return (
-                      <div className="flex gap-2 mt-2 flex-wrap">
-                        {linked.variants.map((v) => (
-                          <span key={v.id} className={`text-xs px-2 py-0.5 rounded ${stockTone(v.available)}`}>
-                            {v.label}: {v.available}
-                          </span>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                  <p className="text-sm text-gray-400 mt-2">{product.description.slice(0, 100)}...</p>
-                  <div className="flex gap-2 mt-4">
-                    <button onClick={() => handleEdit(product)} className="text-gold hover:text-gold-light text-sm font-semibold">Edit</button>
-                    <button onClick={() => handleDelete(product.id)} className="text-red-400 hover:text-red-300 text-sm font-semibold">Delete</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              </DrawerFooter>
+            </form>
+      </AdminDrawer>
     </AdminLayout>
   );
 }

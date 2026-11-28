@@ -418,3 +418,12 @@ body {
 .group:hover .group-hover-secondary {
   color: var(--accent);
 }
+
+/* Admin add/edit panel (components/AdminDrawer.tsx) */
+@keyframes admin-drawer-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes admin-drawer-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.admin-drawer-slide { animation: admin-drawer-slide-in 0.2s ease-out; }
+.admin-drawer-fade { animation: admin-drawer-fade-in 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-drawer-slide, .admin-drawer-fade { animation: none; }
+}

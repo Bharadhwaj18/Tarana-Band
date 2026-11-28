@@ -219,7 +219,7 @@ export default function AdminGalleryPage() {
           <label className="block">
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               multiple
               onChange={handleFileUpload}
               disabled={uploading || photos.length >= MAX_PHOTOS}

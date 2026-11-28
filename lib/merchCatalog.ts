@@ -49,7 +49,9 @@ export async function getCatalog(
     .select(PRODUCT_COLUMNS)
     .eq('is_active', true)
     .not('rigly_item_id', 'is', null)
-    .order('order_position', { ascending: true });
+    .order('order_position', { ascending: true })
+    // Same position: the older product first, so the order never flips around
+    .order('created_at', { ascending: true });
   if (options.ids) query = query.in('id', options.ids);
   const { data: rows, error } = await query;
   if (error) throw new Error(`Could not load products: ${error.message}`);

@@ -74,7 +74,7 @@ export default function AboutPage() {
       );
 
       const [{ data: membersData }, { data: configData }, { data: photoData }] = await Promise.all([
-        supabase.from('band_members').select('*').order('order_position', { ascending: true }),
+        supabase.from('band_members').select('*').order('order_position', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('general_config').select('content').eq('section_name', 'about_page').maybeSingle(),
         supabase.from('gallery_photos').select('image_url').limit(6),
       ]);
