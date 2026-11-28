@@ -67,7 +67,9 @@ function getOptimizedSupabaseImageUrl(url: string, width: number = 1600, quality
   if (!url || !url.includes('/storage/v1/object/public/')) return url;
   const renderUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
   const separator = renderUrl.includes('?') ? '&' : '?';
-  return `${renderUrl}${separator}width=${width}&quality=${quality}`;
+  // resize=contain scales the whole photo down to that width. Without it Supabase, given only a width, keeps the
+  // original height and crops a thin strip out of the middle of the photo.
+  return `${renderUrl}${separator}width=${width}&resize=contain&quality=${quality}`;
 }
 
 function formatShortDate(date: string) {
